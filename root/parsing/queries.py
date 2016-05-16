@@ -52,6 +52,7 @@ def loadNgrams(dbe):
             ngrams[word] = freq
         cursor.close()
     
+    """
     # bigrams
     with dbe.cursor() as cursor:
         query = 'SELECT word1, word2, freq FROM passwords.bigrams'
@@ -67,6 +68,8 @@ def loadNgrams(dbe):
         for word1, word2, word3, freq in cursor:
             ngrams[word1+' '+word2+' '+word3] = freq
         cursor.close()
+
+    """
 
 def getDataSetSize(dbe, tableName):
 

@@ -14,12 +14,15 @@ import argparse
 
 class BackoffTagger(SequentialBackoffTagger):
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, picklePath, COCATaggerPath, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
         self.dist = FreqDist()
         
 #       train_sents = brown.tagged_sents()
-        train_sents = pickle.load(open("pickles/brown_clawstags.pickle"))
+        try:
+            train_sents = pickle.load(open(picklePath))
+        except:
+            train_sents = pickle.load(open(picklePath))
         # make sure all tuples are in the required format: (TAG, word)
         train_sents = [[t for t in sentence if len(t) == 2] for sentence in train_sents]
 
@@ -27,6 +30,7 @@ class BackoffTagger(SequentialBackoffTagger):
         wn_tagger      = WordNetTagger(default_tagger)
         names_tagger   = NamesTagger(wn_tagger)
         coca_tagger    = COCATagger(names_tagger)
+        coca_tagger.readCOCAList(COCATaggerPath)
         bigram_tagger  = BigramTagger(train_sents, backoff=coca_tagger)
         trigram_tagger = TrigramTagger(train_sents, backoff=bigram_tagger)
         
@@ -57,12 +61,16 @@ def POStag(password, tagger):
 
 
 
-def main(db, dryrun, stats, verbose):
+def main(db, pos_tagger, dryrun, stats, verbose):
     """ Tags the dataset by POS and sentiment at
         the same time """    
     
-    with Timer("Backoff tagger load"):    
-        pos_tagger = BackoffTagger()
+    if not pos_tagger:
+        with Timer("Backoff tagger load"):
+            picklePath = "pickles/brown_clawstags.pickle"
+            COCATaggerPath = "../files/coca_500k.csv"
+
+            pos_tagger = BackoffTagger(picklePath, COCATaggerPath)
     
     counter = 0
     

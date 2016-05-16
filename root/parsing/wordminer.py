@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import traceback
 
 if __name__ == '__main__' and __package__ is None:
     import os
@@ -20,6 +21,12 @@ import timer
 import util
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import ssl
+import urllib
+
+# Import POS Tagger
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pos_tagger
+import database
 
 
 # the ids should be in priority order
@@ -581,7 +588,7 @@ def generateCandidates(wordList, password):
     return candidates
 
 
-def HTTPRequestHandlerContainer(freqInfo, dictionary):
+def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
     global db, options
 
     class HTTPRequestHandler(BaseHTTPRequestHandler):
@@ -589,7 +596,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary):
         def do_GET(self):
             try:
                 clearPassword = self.path.split("transform?")[1]
-                self.segmentPassword(clearPassword)
+                clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
+                self.segmentPassword(clearPasswordURIDecoded)
                 self.posTagging()
             except:
                 clearPassword = ''
@@ -683,7 +691,13 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary):
 
 
         def posTagging(self):
-            os.system("../pos_tagger.py " + options.password_set)
+            try:
+                POSTaggerDb = database.PwdDb(options.password_set, sample=options.sample, save_cachesize=500000)
+                pos_tagger.main(POSTaggerDb, pos_tagger_data, options.dryrun, options.stats, options.verbose)
+            except:
+                e = sys.exc_info()[0]
+                traceback.print_exc()
+                sys.exit(1)
 
     return HTTPRequestHandler
 
@@ -712,6 +726,13 @@ def sqlMine(dictSetIds):
     print "reading dictionary..."
     dictionary = getDictionary(db, dictSetIds)
 
+    print "Loading POS Tagger"
+    with timer.Timer("Backoff tagger load"):
+        picklePath = "../pickles/brown_clawstags.pickle"
+        COCATaggerPath = "../../files/coca_500k.csv"
+
+        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+
     """
     # Create a TCP/IP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -725,7 +746,7 @@ def sqlMine(dictSetIds):
     """
 
     server_address = ('127.0.0.1', 444)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')
@@ -753,6 +774,10 @@ def cli_options():
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
     parser.add_argument('-r', '--reset', action='store_true',
                         help='reset results (truncates tables set and set_contains)')
+    parser.add_argument('-d', '--dryrun', action='store_true', \
+        help="no commits to the database")
+    parser.add_argument('-t', '--stats', action='store_true', \
+        help="output stats in the end")
 
     # db_group = parser.add_argument_group('Database Connection Arguments')
     #db_group.add_argument('--user', type=str, default='root', help="db username for authentication")

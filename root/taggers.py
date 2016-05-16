@@ -71,13 +71,16 @@ class NamesTagger(SequentialBackoffTagger):
 class COCATagger(SequentialBackoffTagger):
     def __init__(self, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
-        coca_list = csv.reader(open('../files/coca_500k.csv'), delimiter='\t')
+
+    def readCOCAList(self, COCAPath):
+        coca_list = csv.reader(open(COCAPath), delimiter='\t')
         self.tag_map = dict()
         for row in coca_list:
             freq = int(row[0])
             word = row[1].strip()
             pos  = row[2].strip()
             self.insertPair(word, pos, freq)
+
 
     def insertPair(self, word, pos, freq):
         """ Appends a (pos,freq) tuple in the end of the list
