@@ -43,8 +43,6 @@ def select_treecut(pwset_id, abstraction_level):
     node_index.  node_index points to the nodes in the tree.
     """
 
-    global nouns_tree, verbs_tree, node_index
-
     nouns_tree, verbs_tree = semantics.load_semantictrees(pwset_id)
     
     cut = wagner.findcut(nouns_tree, abstraction_level)
@@ -171,6 +169,11 @@ def classify_pos_semantic(segment):
     elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
         tag = DictionaryTag.map[segment.dictset_id]
     else:
+        # We dont have to use WordNet for USC Cloudsweeper.
+        # So, no need to convert to Wordnet synset
+        # just set the tag to segment.pos
+        tag = segment.pos
+        """
         synset = semantics.synset(segment.word, segment.pos)
         # only tries to generalize verbs and nouns
         if synset is not None and synset.pos in ['v', 'n']:
@@ -178,6 +181,7 @@ def classify_pos_semantic(segment):
             tag = '{}_{}'.format(segment.pos, generalize(synset)) 
         else:
             tag = segment.pos
+        """
 
     return tag
 
@@ -305,6 +309,7 @@ def print_result(password, segments, tags, pattern):
 def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 #    tags_file = open('grammar/debug.txt', 'w+')
     
+    print "Grammar Generation Starting..."
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
     
@@ -361,13 +366,16 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
     with open(os.path.join(basepath, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
         for pattern, freq in patterns_dist.items():
+            print pattern
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
+        f.close()
     
     for tag in segments_dist.keys():
         total = segments_dist[tag].N()
         with open(os.path.join(basepath, 'nonterminals', str(tag) + '.txt'), 'w+') as f:
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v)/total))
+            f.close()
 
 
 def options():
@@ -410,8 +418,9 @@ if __name__ == '__main__':
             exceptions.append(int(l.strip()))
         opts.exceptions.close()
 
-    if not opts.tags == 'pos':
-        select_treecut(opts.password_set, opts.abstraction)
+    # Generalization of POS not required for USC Cloudsweeper. Using CLAWS7 tagset
+    # if not opts.tags == 'pos':
+    #     select_treecut(opts.password_set, opts.abstraction)
 
     try:
         with Timer('grammar generation'):

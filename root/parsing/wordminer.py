@@ -27,6 +27,7 @@ import urllib
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pos_tagger
 import database
+import grammar
 
 
 # the ids should be in priority order
@@ -196,7 +197,7 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
         score = float(tempf) / float(setSize)
 
     # # Debugging
-    #    for i in range(0, numWords):
+    # for i in range(0, numWords):
     #        print x[i][0], ' ',
     #    print tempf, ' ', result, ' ', score
 
@@ -381,7 +382,7 @@ def clearResults(dbe, pwset_id):
         # cursor.execute("TRUNCATE table set_contains;")
         cursor.execute("DELETE a FROM set_contains a INNER JOIN sets b on a.set_id = b.set_id \
              INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};".format(pwset_id))
-        #        cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
+        # cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
 
         #        cursor.execute("TRUNCATE table sets;")
         cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
@@ -545,7 +546,7 @@ def mineLine(db, password, dictionary, freqInfo):
         candidates = generateCandidates(words, password)
         # print candidates
         resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
-        #         print resultSet
+        # print resultSet
 
         # add the trashy fragments in the database    
         resultSet = processGaps(db, resultSet, password)
@@ -599,10 +600,11 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
                 self.segmentPassword(clearPasswordURIDecoded)
                 self.posTagging()
+                self.grammarGeneration()
             except:
                 clearPassword = ''
 
-            #send code 200 response
+            # send code 200 response
             self.send_response(200)
             self.send_header('Content-type', 'text-html')
             self.end_headers()
@@ -692,12 +694,24 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
         def posTagging(self):
             try:
-                POSTaggerDb = database.PwdDb(options.password_set, sample=options.sample, save_cachesize=500000)
-                pos_tagger.main(POSTaggerDb, pos_tagger_data, options.dryrun, options.stats, options.verbose)
+                self.passwordSegmentsDb = database.PwdDb(options.password_set, sample=options.sample,
+                                                         save_cachesize=500000)
+                pos_tagger.main(self.passwordSegmentsDb, pos_tagger_data, options.dryrun, options.stats,
+                                options.verbose)
             except:
                 e = sys.exc_info()[0]
                 traceback.print_exc()
                 sys.exit(1)
+
+        def grammarGeneration(self):
+            # grammar.select_treecut(options.password_set, 5000)
+            self.passwordSegmentsDb = database.PwdDb(options.password_set, sample=options.sample)
+            try:
+                grammar.main(self.passwordSegmentsDb, options.password_set, options.dryrun, options.verbose,
+                             "../grammar3", options.tags)
+            except KeyboardInterrupt:
+                db.finish()
+                raise
 
     return HTTPRequestHandler
 
@@ -757,7 +771,7 @@ def main(opts):
     """I'm main."""
     # global dict_sets, USER, PASSWORD
 
-    #    USER = opts.user
+    # USER = opts.user
     #    PASSWORD = opts.pwd
 
     global db, options
@@ -775,12 +789,14 @@ def cli_options():
     parser.add_argument('-r', '--reset', action='store_true',
                         help='reset results (truncates tables set and set_contains)')
     parser.add_argument('-d', '--dryrun', action='store_true', \
-        help="no commits to the database")
+                        help="no commits to the database")
     parser.add_argument('-t', '--stats', action='store_true', \
-        help="output stats in the end")
+                        help="output stats in the end")
+    parser.add_argument('--tags', default='pos_semantic', \
+                        choices=['pos_semantic', 'pos', 'backoff', 'word'])
 
     # db_group = parser.add_argument_group('Database Connection Arguments')
-    #db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
+    # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
     #db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
     #db_group.add_argument('--host', type=str, default='localhost', help="db host")
     #db_group.add_argument('--port', type=int, default=3306, help="db port")
