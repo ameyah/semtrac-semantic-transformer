@@ -1,0 +1,25 @@
+# PyCharm
+# http://www.jetbrains.com/pycharm/webhelp/project.html
+.idea
+.iml
+
+.pydevproject
+
+*.json
+.project
+.cproject
+root/guessmaker
+
+*.csv
+results/*.txt
+results/cut/
+grammar/
+
+*.pyc
+*.*~
+
+
+*.o
+*.so
+
+
