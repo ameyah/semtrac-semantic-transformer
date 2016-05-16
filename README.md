@@ -1,1 +1,0 @@
-# cloudsweeper-semantic-generator
