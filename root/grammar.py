@@ -321,7 +321,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
         tags = []
 
         segments = expand_gaps(segments)
-        
+
         for s in segments:  # semantic tags
             if tag_type == 'pos':
                 tag = classify_by_pos(s)
@@ -366,7 +366,6 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
     with open(os.path.join(basepath, 'rules.txt'), 'w+') as f:
         total = patterns_dist.N()
         for pattern, freq in patterns_dist.items():
-            print pattern
             f.write('{}\t{}\n'.format(pattern, float(freq)/total))
         f.close()
     
