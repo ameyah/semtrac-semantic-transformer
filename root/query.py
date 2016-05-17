@@ -54,3 +54,24 @@ def extent_parsed(pwset_id):
     """
     return "SELECT MAX(pass_id) as max, MIN(pass_id) as min FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
             "WHERE passwords.pwset_id = {}".format(pwset_id)
+
+
+def extract_dictionary_word(dictset_id, seq_no):
+    """
+    :param dictset_id: Dictionary Set ID
+    :param seq_no: The position corresponding to the dictionary set to be extracted
+    :return: The corresponding query
+    Description: Generates a query to extract dictionary word as per the position in the corresponding
+                dictset_id
+    """
+    query = "SELECT dict_text FROM passwords.dictionary WHERE dictset_id = {} " . format(dictset_id)
+    query += "LIMIT 1 OFFSET {}" . format(seq_no - 1)
+    return query
+
+
+def count_dictionary_type(dictset_id):
+    """
+    Description: Returns query to count the number of words corresponding to the type of dictset_ids
+    """
+    query = "SELECT COUNT(*) as count FROM passwords.dictionary WHERE dictset_id = {} " . format(dictset_id)
+    return query

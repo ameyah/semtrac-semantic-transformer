@@ -27,6 +27,8 @@ import re
 import argparse
 import shutil
 import os
+import md5
+import string
 
 #-----------------------------------------
 # Initializing module variables
@@ -306,6 +308,23 @@ def print_result(password, segments, tags, pattern):
         print "{}\t{}\t{}\t{}".format(password, segments[i].word, tags[i], pattern)
 
 
+def generate_transformed_segment(segment):
+    if segment.dictset_id <= 60:
+        one_way_hash = md5.new(segment.word).hexdigest()
+
+        # Remove alphabets from MD5 hash
+        string_translation = string.maketrans('', '')
+        no_digits = string_translation.translate(string_translation, string.digits)
+        one_way_hash = one_way_hash.translate(string_translation, no_digits)
+
+        # map the hash to a position in database and return the word at that position
+        total_dictionary_type = database.get_dictionary_type_count(segment.dictset_id)
+        dictionary_position = int(one_way_hash) % int(total_dictionary_type)
+        return database.get_dictionary_word(segment.dictset_id, int(dictionary_position))
+    else:
+        return segment.word
+
+
 def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
 #    tags_file = open('grammar/debug.txt', 'w+')
     
@@ -319,6 +338,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
         segments = db.nextPwd()
         password = ''.join([s.word for s in segments])
         tags = []
+        transformedPassword = ""
 
         segments = expand_gaps(segments)
 
@@ -333,8 +353,10 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
                 tag = classify_pos_semantic(s)
 
             tags.append(tag)
+            transformedPassword += str(generate_transformed_segment(s))
             segments_dist[tag][s.word] += 1
             
+        print password + " - " + transformedPassword
         pattern = stringify_pattern(tags)
         
         patterns_dist[pattern] += 1

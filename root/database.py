@@ -27,6 +27,17 @@ def names():
     return [row['dict_text'] for row in cursor.fetchall()]
 
 
+def get_dictionary_word(dictset_id, seq_no):
+    cursor = connection().cursor()
+    cursor.execute(query.extract_dictionary_word(dictset_id, seq_no))
+    return cursor.fetchall()[0]['dict_text']
+
+
+def get_dictionary_type_count(dictset_id):
+    cursor = connection().cursor()
+    cursor.execute(query.count_dictionary_type(dictset_id))
+    return cursor.fetchall()[0]['count']
+
 class PwdDb():
     """ A few notes:
     
@@ -178,6 +189,7 @@ class PwdDb():
         self.savecursor.close()
         self.conn_save.close()
         self.conn_read.close()
+
 
 
 # class Updater(threading.Thread):
