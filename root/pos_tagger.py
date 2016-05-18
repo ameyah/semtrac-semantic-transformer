@@ -19,13 +19,9 @@ class BackoffTagger(SequentialBackoffTagger):
         self.dist = FreqDist()
         
 #       train_sents = brown.tagged_sents()
-        try:
-            train_sents = pickle.load(open(picklePath))
-        except:
-            train_sents = pickle.load(open(picklePath))
+        train_sents = pickle.load(open(picklePath))
         # make sure all tuples are in the required format: (TAG, word)
         train_sents = [[t for t in sentence if len(t) == 2] for sentence in train_sents]
-
         default_tagger = DefaultTagger('nn')
         wn_tagger      = WordNetTagger(default_tagger)
         names_tagger   = NamesTagger(wn_tagger)
@@ -95,6 +91,8 @@ def main(db, pos_tagger, dryrun, stats, verbose):
             
                 # extracts to a list of strings and tags them
                 pos_tagged = pos_tagger.tag([f.word for f in pwd])
+                print [f.word for f in pwd]
+                print pos_tagged
 
             
             for i, f in enumerate(pwd):
@@ -140,7 +138,7 @@ if __name__ == "__main__":
 
     try:
         db = database.PwdDb(opts.password_set, sample=opts.sample, save_cachesize=500000)
-        main(db, opts.dryrun, opts.stats, opts.verbose)
+        main(db, None, opts.dryrun, opts.stats, opts.verbose)
     except:
         e = sys.exc_info()[0]
         traceback.print_exc()
