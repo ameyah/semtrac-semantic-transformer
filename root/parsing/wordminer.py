@@ -759,7 +759,7 @@ def sqlMine(dictSetIds):
     sock.listen(1)
     """
 
-    server_address = ('127.0.0.1', 444)
+    server_address = ('127.0.0.1', 4444)
     HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')

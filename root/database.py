@@ -33,10 +33,27 @@ def get_dictionary_word(dictset_id, seq_no):
     return cursor.fetchall()[0]['dict_text']
 
 
+def get_wordlist_word(pos, seq_no):
+    cursor = connection().cursor()
+    cursor.execute(query.extract_wordlist_word(pos, seq_no))
+    return cursor.fetchall()[0]['wordlist_text']
+
+
 def get_dictionary_type_count(dictset_id):
     cursor = connection().cursor()
     cursor.execute(query.count_dictionary_type(dictset_id))
     return cursor.fetchall()[0]['count']
+
+
+def get_wordlist_type_count(pos):
+    cursor = connection().cursor()
+    cursor.execute(query.count_wordlist_type(pos))
+    return cursor.fetchall()[0]['count']
+
+def check_wordset_pos(pos):
+    cursor = connection().cursor()
+    cursor.execute(query.get_wordset_id(pos))
+    return cursor.rowcount > 0
 
 class PwdDb():
     """ A few notes:

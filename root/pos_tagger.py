@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import database 
-from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger,\
-SequentialBackoffTagger
+import database
+from nltk.tag.sequential import DefaultTagger, BigramTagger, TrigramTagger, \
+    SequentialBackoffTagger
 from nltk.probability import FreqDist
 from taggers import COCATagger, NamesTagger, WordNetTagger
 import cPickle as pickle
@@ -13,88 +13,82 @@ import argparse
 
 
 class BackoffTagger(SequentialBackoffTagger):
-    
     def __init__(self, picklePath, COCATaggerPath, *args, **kwargs):
         SequentialBackoffTagger.__init__(self, *args, **kwargs)
         self.dist = FreqDist()
-        
-#       train_sents = brown.tagged_sents()
+
+        # train_sents = brown.tagged_sents()
         train_sents = pickle.load(open(picklePath))
         # make sure all tuples are in the required format: (TAG, word)
         train_sents = [[t for t in sentence if len(t) == 2] for sentence in train_sents]
         default_tagger = DefaultTagger('nn')
-        wn_tagger      = WordNetTagger(default_tagger)
-        names_tagger   = NamesTagger(wn_tagger)
-        coca_tagger    = COCATagger(names_tagger)
+        wn_tagger = WordNetTagger(default_tagger)
+        names_tagger = NamesTagger(wn_tagger)
+        coca_tagger = COCATagger(names_tagger)
         coca_tagger.readCOCAList(COCATaggerPath)
-        bigram_tagger  = BigramTagger(train_sents, backoff=coca_tagger)
+        bigram_tagger = BigramTagger(train_sents, backoff=coca_tagger)
         trigram_tagger = TrigramTagger(train_sents, backoff=bigram_tagger)
-        
+
         # doesn't include self cause it's a dumb tagger (would always return None)
-        self._taggers = trigram_tagger._taggers 
+        self._taggers = trigram_tagger._taggers
 
     def tag_one(self, tokens, index, history):
         tag = None
         for tagger in self._taggers:
             tag = tagger.choose_tag(tokens, index, history)
-            if tag is not None:  
-                #self.dist.inc(tagger.__class__.__name__)
+            if tag is not None:
+                # self.dist.inc(tagger.__class__.__name__)
                 self.dist[tagger.__class__.__name__] += 1
-#                  print tokens[index], history, tagger.__class__.__name__, tag
+                #                  print tokens[index], history, tagger.__class__.__name__, tag
                 break
-        return tag 
+        return tag
 
 
-#TODO: Isolate the POS tagging code in this function
+    # TODO: Isolate the POS tagging code in this function
+
+
 def POStag(password, tagger):
     """ Part-of-speech tag a single password.
     Sets the POS attribute of the Fragments.
     password: a list of Fragment objects  
     """
     pass
-    
-
-
 
 
 def main(db, pos_tagger, dryrun, stats, verbose):
     """ Tags the dataset by POS and sentiment at
-        the same time """    
-    
+        the same time """
+
     if not pos_tagger:
         with Timer("Backoff tagger load"):
             picklePath = "pickles/brown_clawstags.pickle"
             COCATaggerPath = "../files/coca_500k.csv"
 
             pos_tagger = BackoffTagger(picklePath, COCATaggerPath)
-    
+
     counter = 0
-    
+
     with Timer("POS tagging"):
         total = db.sets_size
-        
+
         print "Connected to database, tagging..."
-        
-        lastpw = None        
-        
+
+        lastpw = None
+
         while db.hasNext():
             pwd = db.nextPwd()  # list of Fragment
             pwd_str = pwd[0].password
 
             counter += 1
-                
+
             # filters segments that are not dictionary words
             pwd = [f for f in pwd if f.dictset_id <= 90]
-            
+
             # only recalculate POS if this password is diff than previous
             if pwd_str != lastpw:
-            
                 # extracts to a list of strings and tags them
                 pos_tagged = pos_tagger.tag([f.word for f in pwd])
-                print [f.word for f in pwd]
-                print pos_tagged
 
-            
             for i, f in enumerate(pwd):
                 pos = pos_tagged[i][1]  # Brown pos tag
                 f.pos = pos
@@ -102,37 +96,37 @@ def main(db, pos_tagger, dryrun, stats, verbose):
                     db.save(f, True)
                 if verbose:
                     print "{}\t{}\t{}".format(f.password, f.word, f.pos)
-            
+
             lastpw = pwd_str
-    
+
             if counter % 100000 == 0:
-                print "{} passwords processed. {}% completed..."\
-                .format(counter, (float(counter)/total)*100)
-        
+                print "{} passwords processed. {}% completed..." \
+                    .format(counter, (float(counter) / total) * 100)
+
         db.finish()
-        
+
         if stats:
             print "\nFrequency distribution of results by tagger\n"
             for k, v in pos_tagger.dist.items():
                 print "{}\t{}".format(k, v)
-    
+
 
 def options():
     parser = argparse.ArgumentParser()
     parser.add_argument('password_set', default=1, type=int, \
-        help='the id of the collection of passwords to be processed')
+                        help='the id of the collection of passwords to be processed')
     parser.add_argument('-s', '--sample', default=None, type=int, \
-        help="sample size")
+                        help="sample size")
     parser.add_argument('-d', '--dryrun', action='store_true', \
-        help="no commits to the database")
+                        help="no commits to the database")
     parser.add_argument('-t', '--stats', action='store_true', \
-        help="output stats in the end")
+                        help="output stats in the end")
     parser.add_argument('-v', '--verbose', action='store_true', \
-        help="output the pos tags of each password")
+                        help="output the pos tags of each password")
 
     return parser.parse_args()
- 
- 
+
+
 if __name__ == "__main__":
     opts = options()
 
@@ -144,8 +138,8 @@ if __name__ == "__main__":
         traceback.print_exc()
         sys.exit(1)
 
-    # tests
-#     t = getTagger()
+        # tests
+# t = getTagger()
 #     print t.tag(['fat','boy','1'])
 #     print t.tag(['fat','boy'])
 #     print nltk.pos_tag(['all', 'yours'])

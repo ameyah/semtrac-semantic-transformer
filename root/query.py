@@ -69,9 +69,37 @@ def extract_dictionary_word(dictset_id, seq_no):
     return query
 
 
+def extract_wordlist_word(pos, seq_no):
+    """
+    Description: Generates a query to extract wordlist word as per the position in the corresponding
+                pos
+    """
+    query = "SELECT wordlist_text FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
+            "WHERE wordset_name = '{}') " . format(pos)
+    query += "LIMIT 1 OFFSET {}" . format(seq_no - 1)
+    return query
+
+
 def count_dictionary_type(dictset_id):
     """
-    Description: Returns query to count the number of words corresponding to the type of dictset_ids
+    Description: Returns query to count the number of words corresponding to the type of dictset_ids in dictionary
     """
     query = "SELECT COUNT(*) as count FROM passwords.dictionary WHERE dictset_id = {} " . format(dictset_id)
+    return query
+
+
+def count_wordlist_type(pos):
+    """
+    Description: Returns query to count the number of words corresponding to the type of POS in wordlist
+    """
+    query = "SELECT COUNT(*) as count FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
+            "WHERE wordset_name = '{}') " . format(pos)
+    return query
+
+
+def get_wordset_id(pos):
+    """
+    Description: Returns query to return wordset_id if wordlist_set contains pos
+    """
+    query = "SELECT wordset_id FROM passwords.wordlist_set WHERE wordset_name = '{}'" . format(pos)
     return query
