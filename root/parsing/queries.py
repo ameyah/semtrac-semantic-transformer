@@ -303,13 +303,16 @@ def getTrigramFreq (dbe, word1, word2, word3):
 #    return freq;
 
 
-def insert_login_website(db, website_url):
+def insert_login_website(db, password_set, website_url):
     website_id = 0
     query = '''SELECT website_id FROM websites WHERE website_text = ?'''
+    print query
     with db.cursor() as cur:
         cur.execute(query, (website_url,))
-        if cur.rowcount > 0:
-            website_id = cur.fetchall()[0]['website_id']
+        res = cur.fetchall()
+        if len(res) > 0:
+            website_id = res[0][0]
+            print website_id
         else:
             # add the website
             query = '''INSERT INTO websites SET website_text = ?'''
@@ -318,13 +321,25 @@ def insert_login_website(db, website_url):
                 query = '''SELECT website_id FROM websites WHERE website_text = ?'''
                 with db.cursor() as cur:
                     cur.execute(query, (website_url,))
-                    website_id = cur.fetchall()[0]['website_id']
+                    website_id = cur.fetchall()[0][0]
 
-    query = '''INSERT INTO transformed_passwords SET website_id = ?'''
+    query = '''INSERT INTO transformed_passwords SET website_id = ?, pwset_id = ?'''
     with db.cursor() as cur:
-        cur.execute(query, (website_id))
-        # TODO: select last row
-        query = '''SELECT password_id FROM transformed_passwords WHERE website_text = ?'''
+        cur.execute(query, (website_id, password_set,))
+        query = '''SELECT password_id FROM transformed_passwords ORDER BY password_id DESC LIMIT 1'''
         with db.cursor() as cur:
-            cur.execute(query, (website_url,))
-            website_id = cur.fetchall()[0]['website_id']
+            cur.execute(query)
+            password_id = cur.fetchall()[0][0]
+            return password_id
+
+
+def clear_original_data(db):
+    query = '''DELETE FROM passwords.passwords'''
+    with db.cursor() as cur:
+        cur.execute(query)
+    query = '''DELETE FROM sets'''
+    with db.cursor() as cur:
+        cur.execute(query)
+    query = '''DELETE FROM set_contains'''
+    with db.cursor() as cur:
+        cur.execute(query)

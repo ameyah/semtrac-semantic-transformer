@@ -55,6 +55,35 @@ def check_wordset_pos(pos):
     cursor.execute(query.get_wordset_id(pos))
     return cursor.rowcount > 0
 
+
+def get_grammar_id(grammar_text):
+    conn = connection()
+    cursor = conn.cursor()
+    cursor.execute(query.get_grammar_id(grammar_text))
+    res = cursor.fetchall()
+    if len(res) > 0:
+        # Grammar already present. Get grammar_id
+        print res[0]['grammar_id']
+        return res[0]['grammar_id']
+    else:
+        # Insert grammar_text and get its id
+        cursor.execute(query.insert_grammar(grammar_text))
+        conn.commit()
+        cursor.execute(query.get_grammar_id(grammar_text))
+        res = cursor.fetchall()
+        print res
+        return res[0]['grammar_id']
+
+
+def save_transformed_password(transformed_password_id, transformed_password, grammar_text):
+    # Get grammar_id
+    grammar_id = get_grammar_id(grammar_text)
+    conn = connection()
+    cursor = conn.cursor()
+    cursor.execute(query.save_transformed_password(transformed_password_id, transformed_password, grammar_id))
+    conn.commit()
+
+
 class PwdDb():
     """ A few notes:
     

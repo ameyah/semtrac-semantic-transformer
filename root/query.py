@@ -103,3 +103,27 @@ def get_wordset_id(pos):
     """
     query = "SELECT wordset_id FROM passwords.wordlist_set WHERE wordset_name = '{}'" . format(pos)
     return query
+
+
+def get_grammar_id(grammar_text):
+    """
+    Description: Returns query to return grammar_id for grammar_text
+    """
+    query = "SELECT grammar_id FROM grammar WHERE grammar_text = '{}'".format(grammar_text)
+    return query
+
+
+def insert_grammar(grammar_text):
+    """
+    Description: Returns query to insert the grammar
+    """
+    query = "INSERT INTO grammar SET grammar_text = '{}'".format(grammar_text)
+    return query
+
+def save_transformed_password(transformed_password_id, transformed_password, grammar_id):
+    """
+    Description: Returns query to update transformed_passwords table to store the corresponding transformed_password
+    """
+    query = "UPDATE transformed_passwords SET password_text = '{}', grammar_id = {} WHERE password_id = {}".format(transformed_password,
+                                                                                                                   grammar_id, transformed_password_id)
+    return query

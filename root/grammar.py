@@ -395,7 +395,7 @@ def generate_transformed_segment(segment, tag):
                 return segment.word
 
 
-def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
+def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_type):
     #    tags_file = open('grammar/debug.txt', 'w+')
 
     print "Grammar Generation Starting..."
@@ -426,11 +426,18 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
             transformedPassword += str(generate_transformed_segment(s, tag))
             segments_dist[tag][s.word] += 1
 
-        print password + " - " + transformedPassword
-        # Save transformed password in the database
         pattern = stringify_pattern(tags)
-
         patterns_dist[pattern] += 1
+
+        # Save transformed password in the database if transformed_password_id is not None
+        print password + " - " + transformedPassword
+        if transformed_password_id is None:
+            print password + " - " + transformedPassword
+        else:
+            # Save transformed password at corresponding location in database
+            print pattern
+            print transformed_password_id
+            database.save_transformed_password(transformed_password_id, transformedPassword, str(pattern))
 
         # outputs the classification results for debugging purposes
         if verbose:
@@ -447,6 +454,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
     if dryrun:
         return
 
+    """
     # remove previous grammar
     try:
         shutil.rmtree(basepath)
@@ -468,6 +476,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
             for k, v in segments_dist[tag].items():
                 f.write("{}\t{}\n".format(k, float(v) / total))
             f.close()
+    """
 
 
 def options():
@@ -520,7 +529,7 @@ if __name__ == '__main__':
             print 'Instantiating database...'
             db = database.PwdDb(opts.password_set, sample=opts.sample, exceptions=exceptions)
             try:
-                main(db, opts.password_set, opts.dryrun, \
+                main(db, None, opts.password_set, opts.dryrun, \
                      opts.verbose, opts.path, opts.tags)
             except KeyboardInterrupt:
                 db.finish()

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import traceback
+import urlparse
 
 if __name__ == '__main__' and __package__ is None:
     import os
@@ -198,8 +199,8 @@ def getBestBigramTrigramScore_r(db, x, numWords, freqInfo, dictionary):
 
     # # Debugging
     # for i in range(0, numWords):
-    #        print x[i][0], ' ',
-    #    print tempf, ' ', result, ' ', score
+    # print x[i][0], ' ',
+    # print tempf, ' ', result, ' ', score
 
     # Recursive case: the word frequency was not found, and we have at least
     # one word to try out.
@@ -384,10 +385,10 @@ def clearResults(dbe, pwset_id):
              INNER JOIN passwords c on b.pass_id = c.pass_id and pwset_id = {};".format(pwset_id))
         # cursor.execute("ALTER TABLE set_contains AUTO_INCREMENT=1;")
 
-        #        cursor.execute("TRUNCATE table sets;")
+        # cursor.execute("TRUNCATE table sets;")
         cursor.execute("DELETE a FROM sets a INNER JOIN passwords b on a.pass_id = b.pass_id \
             and pwset_id = {};".format(pwset_id))
-        #       cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
+        # cursor.execute("ALTER TABLE sets AUTO_INCREMENT=1;")
 
 
 def currentdir():
@@ -596,21 +597,33 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         # handle GET command
         def do_GET(self):
             try:
-                clearPassword = self.path.split("transform?")[1]
+                # getParams = self.path.split("transform?")[1]
+                parsed = urlparse.urlparse(self.path)
+                clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
+                websiteUrl = urlparse.parse_qs(parsed.query)['url'][0]
                 clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
+                print clearPasswordURIDecoded
+                print websiteUrl
+
+                # send code 200 response
+                self.send_response(200)
+                self.send_header('Content-type', 'text-html')
+                self.end_headers()
 
                 # First insert the login website in the database
+                transformed_password_id = insert_login_website(db, options.password_set, websiteUrl)
 
                 self.segmentPassword(clearPasswordURIDecoded)
                 self.posTagging()
-                self.grammarGeneration()
-            except:
+                self.grammarGeneration(transformed_password_id)
+
+                # Delete original password after transformation
+                self.clearOriginalData()
+            except oursql.Error as e:
+                print e
+                print "exception"
                 clearPassword = ''
 
-            # send code 200 response
-            self.send_response(200)
-            self.send_header('Content-type', 'text-html')
-            self.end_headers()
             return
 
 
@@ -706,15 +719,21 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 traceback.print_exc()
                 sys.exit(1)
 
-        def grammarGeneration(self):
+        def grammarGeneration(self, transformed_password_id):
             # grammar.select_treecut(options.password_set, 5000)
             self.passwordSegmentsDb = database.PwdDb(options.password_set, sample=options.sample)
             try:
-                grammar.main(self.passwordSegmentsDb, options.password_set, options.dryrun, options.verbose,
+                grammar.main(self.passwordSegmentsDb, transformed_password_id, options.password_set, options.dryrun,
+                             options.verbose,
                              "../grammar3", options.tags)
             except KeyboardInterrupt:
                 db.finish()
                 raise
+
+
+        def clearOriginalData(self):
+            clear_original_data(db)
+
 
     return HTTPRequestHandler
 
@@ -775,7 +794,7 @@ def main(opts):
     # global dict_sets, USER, PASSWORD
 
     # USER = opts.user
-    #    PASSWORD = opts.pwd
+    # PASSWORD = opts.pwd
 
     global db, options
     db = connectToDb()
@@ -800,8 +819,8 @@ def cli_options():
 
     # db_group = parser.add_argument_group('Database Connection Arguments')
     # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
-    #db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
-    #db_group.add_argument('--host', type=str, default='localhost', help="db host")
+    # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
+    # db_group.add_argument('--host', type=str, default='localhost', help="db host")
     #db_group.add_argument('--port', type=int, default=3306, help="db port")
 
     g = parser.add_mutually_exclusive_group()
