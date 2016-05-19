@@ -427,6 +427,7 @@ def main(db, pwset_id, dryrun, verbose, basepath, tag_type):
             segments_dist[tag][s.word] += 1
 
         print password + " - " + transformedPassword
+        # Save transformed password in the database
         pattern = stringify_pattern(tags)
 
         patterns_dist[pattern] += 1

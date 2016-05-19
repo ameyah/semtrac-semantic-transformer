@@ -301,3 +301,30 @@ def getTrigramFreq (dbe, word1, word2, word3):
 #        if not freq:
 #            freq = 0
 #    return freq;
+
+
+def insert_login_website(db, website_url):
+    website_id = 0
+    query = '''SELECT website_id FROM websites WHERE website_text = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (website_url,))
+        if cur.rowcount > 0:
+            website_id = cur.fetchall()[0]['website_id']
+        else:
+            # add the website
+            query = '''INSERT INTO websites SET website_text = ?'''
+            with db.cursor() as cur:
+                cur.execute(query, (website_url,))
+                query = '''SELECT website_id FROM websites WHERE website_text = ?'''
+                with db.cursor() as cur:
+                    cur.execute(query, (website_url,))
+                    website_id = cur.fetchall()[0]['website_id']
+
+    query = '''INSERT INTO transformed_passwords SET website_id = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (website_id))
+        # TODO: select last row
+        query = '''SELECT password_id FROM transformed_passwords WHERE website_text = ?'''
+        with db.cursor() as cur:
+            cur.execute(query, (website_url,))
+            website_id = cur.fetchall()[0]['website_id']

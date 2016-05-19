@@ -598,6 +598,9 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             try:
                 clearPassword = self.path.split("transform?")[1]
                 clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
+
+                # First insert the login website in the database
+
                 self.segmentPassword(clearPasswordURIDecoded)
                 self.posTagging()
                 self.grammarGeneration()
