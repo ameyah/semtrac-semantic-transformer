@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import cgi
 import traceback
 import urlparse
 
@@ -23,6 +24,8 @@ import util
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import ssl
 import urllib
+import json
+import participant
 
 # Import POS Tagger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,6 +40,7 @@ dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 # sys.argv = ['testWordMiner.py', '-d', [10, 60, 50, 20, 30, 40, 80, 90], '-p', '1']
 
 ENABLE_CHAR_CHUNKS = True
+
 
 # database Authentication Parameters
 # USER = ""
@@ -590,10 +594,38 @@ def generateCandidates(wordList, password):
     return candidates
 
 
+def get_post_data(self, ctype, pdict):
+    if ctype == 'multipart/form-data':
+        postvars = cgi.parse_multipart(self.rfile, pdict)
+    elif ctype == 'application/x-www-form-urlencoded':
+        length = int(self.headers.getheader('content-length'))
+        postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+    return postvars
+
+
 def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
-    global db, options
+    global db, options, participantObj
 
     class HTTPRequestHandler(BaseHTTPRequestHandler):
+
+        # handle POST command
+        def do_POST(self):
+            print self.path
+            if "/website/save" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = get_post_data(self, ctype, pdict)
+                websiteListData = json.loads(postvars['data'][0])
+
+                # save website list
+                insert_website_list(db, participantObj.get_participant_id(), websiteListData)
+
+            elif "/participant" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = get_post_data(self, ctype, pdict)
+                # set current active participant
+                participantObj.set_participant_id(int(postvars['id'][0]))
+
+
         # handle GET command
         def do_GET(self):
             try:
@@ -653,7 +685,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 return
                 # continue  # skipping whitespace password
 
-            # add Password to database temporarily. TODO: To be deleted after extracting semantic rules.
+            # add Password to database temporarily.
             pass_id = addSocketPassword(db, clearPassword, options.password_set)
 
             """
@@ -752,22 +784,22 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    with timer.Timer('n-grams load'):
-        loadNgrams(db)
+    # with timer.Timer('n-grams load'):
+    #     loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    dictionary = getDictionary(db, dictSetIds)
+    # dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
     """
     # Create a TCP/IP socket
@@ -781,8 +813,8 @@ def sqlMine(dictSetIds):
     sock.listen(1)
     """
 
-    server_address = ('127.0.0.1', 4444)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
+    server_address = ('127.0.0.1', 443)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')
@@ -796,9 +828,10 @@ def main(opts):
     # USER = opts.user
     # PASSWORD = opts.pwd
 
-    global db, options
+    global db, options, participantObj
     db = connectToDb()
     options = opts
+    participantObj = participant.Participant()
     sqlMine(dict_sets)
 
 

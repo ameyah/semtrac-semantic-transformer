@@ -1,6 +1,9 @@
 from oursql import CollatedWarningsError
+import datetime
+import tldextract
 from dictionary_trie import Trie
 from utils import *
+from dateutil import parser
 
 NUM_DICT_ID    = 200
 MIXED_NUM_SC_DICT_ID = 201
@@ -343,3 +346,49 @@ def clear_original_data(db):
     query = '''DELETE FROM set_contains'''
     with db.cursor() as cur:
         cur.execute(query)
+
+
+def insert_website_list(db, participant_id, website_list):
+    # Remove previous entries of same participant_id
+    query = '''DELETE FROM transformed_passwords WHERE pwset_id = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (participant_id,))
+
+    for website in website_list:
+        website_id = None
+        url = website['url']
+        subDomainObj = tldextract.extract(url)
+        if subDomainObj.subdomain.lower() == "www":
+            query = '''SELECT website_id FROM websites where website_text in (?, ?)'''
+            with db.cursor() as cur:
+                domainText = "{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
+                cur.execute(query, (url, domainText,))
+                res = cur.fetchall()
+                if len(res) > 0:
+                    website_id = res[0][0]
+        else:
+            query = '''SELECT website_id FROM websites where website_text in (?, ?)'''
+            with db.cursor() as cur:
+                cur.execute(query, (url, "www." + url,))
+                res = cur.fetchall()
+                if len(res) > 0:
+                    website_id = res[0][0]
+
+        if website_id is None:
+            query = '''INSERT INTO websites SET website_text = ?'''
+            with db.cursor() as cur:
+                cur.execute(query, (url,))
+                query = '''SELECT website_id FROM websites where website_text = ?'''
+                with db.cursor() as cur:
+                    cur.execute(query, (url,))
+                    res = cur.fetchall()
+                    website_id = res[0][0]
+
+        # Now, we have website_id
+        # Convert date time string to datetime object
+        # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
+        dateTimeObj = parser.parse(website['date'])
+
+        query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, password_reset_count = ?, date = ?'''
+        with db.cursor() as cur:
+            cur.execute(query, (participant_id, website_id, website['reset_count'], dateTimeObj,))
