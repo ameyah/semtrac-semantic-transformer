@@ -682,6 +682,11 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # Delete original password after transformation
                     self.clearOriginalData()
                     participantObj.reset_active_website()
+                elif "/participant/results" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
+                    get_transformed_passwords_results(db, one_way_hash)
+                    self.send_ok_response()
                 else:
                     self.send_bad_request_response()
             except oursql.Error as e:

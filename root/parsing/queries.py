@@ -417,3 +417,32 @@ def get_participant_id(db, one_way_hash):
         query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
         cursor.execute(query)
         return cursor.fetchone()[0]
+
+
+def get_transformed_passwords_results(db, one_way_hash):
+    query = '''SELECT pwset_id FROM password_set WHERE pwset_name = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (one_way_hash,))
+        res = cur.fetchall()
+        if len(res) == 1:
+            participant_id = res[0][0]
+        else:
+            return False
+
+    query = '''SELECT website_id, password_reset_count, password_text FROM transformed_passwords WHERE pwset_id = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (participant_id,))
+        res = cur.fetchall()
+        if len(res) > 0:
+            transformed_passwords = res
+            # convert list of tuples to list of lists
+            transformed_passwords = [list(elem) for elem in transformed_passwords]
+            for passwordArr in transformed_passwords:
+                website_id = int(passwordArr[0])
+                query = '''SELECT website_text FROM websites WHERE website_id = ?'''
+                with db.cursor() as cur:
+                    cur.execute(query, (website_id,))
+                    website_text = cur.fetchall()[0][0]
+                    passwordArr[0] = website_text
+
+            print transformed_passwords
