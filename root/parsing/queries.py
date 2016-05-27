@@ -306,34 +306,65 @@ def getTrigramFreq (dbe, word1, word2, word3):
 #    return freq;
 
 
-def insert_login_website(db, password_set, website_url):
-    website_id = 0
+def check_website_exists(db, website_url):
+    """Returns website_id of a website_url if it exists"""
+    website_id = None
     query = '''SELECT website_id FROM websites WHERE website_text = ?'''
-    print query
     with db.cursor() as cur:
         cur.execute(query, (website_url,))
         res = cur.fetchall()
         if len(res) > 0:
             website_id = res[0][0]
-            print website_id
         else:
-            # add the website
-            query = '''INSERT INTO websites SET website_text = ?'''
-            with db.cursor() as cur:
-                cur.execute(query, (website_url,))
-                query = '''SELECT website_id FROM websites WHERE website_text = ?'''
+            # check if website_url contains "www."
+            subDomainObj = tldextract.extract(website_url)
+            if subDomainObj.subdomain.lower() == "www":
                 with db.cursor() as cur:
-                    cur.execute(query, (website_url,))
-                    website_id = cur.fetchall()[0][0]
+                    domainText = "{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
+                    cur.execute(query, (domainText,))
+                    res = cur.fetchall()
+                    if len(res) > 0:
+                        website_id = res[0][0]
 
-    query = '''INSERT INTO transformed_passwords SET website_id = ?, pwset_id = ?'''
+    return website_id
+
+
+def add_website(db, website_url):
+    website_id = None
+    query = '''INSERT INTO websites SET website_text = ?'''
     with db.cursor() as cur:
-        cur.execute(query, (website_id, password_set,))
-        query = '''SELECT password_id FROM transformed_passwords ORDER BY password_id DESC LIMIT 1'''
+        cur.execute(query, (website_url,))
+        query = '''SELECT website_id FROM websites WHERE website_text = ?'''
         with db.cursor() as cur:
-            cur.execute(query)
-            password_id = cur.fetchall()[0][0]
+            cur.execute(query, (website_url,))
+            website_id = cur.fetchall()[0][0]
+    return website_id
+
+
+def get_transformed_password_id(db, password_set, website_url):
+    website_id = check_website_exists(db, website_url)
+
+    if website_id is None:
+        # add the website and fetch website_id
+        website_id = add_website(db, website_url)
+
+    query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id=? AND website_id=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (password_set, website_id,))
+        res = cur.fetchall()
+        if len(res) > 0:
+            password_id = res[0][0]
             return password_id
+        else:
+            # Create new entry in transformed_passwords
+            query = '''INSERT INTO transformed_passwords SET website_id = ?, pwset_id = ?'''
+            with db.cursor() as cur:
+                cur.execute(query, (website_id, password_set,))
+                query = '''SELECT password_id FROM transformed_passwords WHERE website_id = ? AND pwset_id = ?'''
+                with db.cursor() as cur:
+                    cur.execute(query, (website_id, password_set,))
+                    password_id = cur.fetchall()[0][0]
+                    return password_id
 
 
 def clear_original_data(db):
@@ -355,34 +386,12 @@ def insert_website_list(db, participant_id, website_list):
         cur.execute(query, (participant_id,))
 
     for website in website_list:
-        website_id = None
         url = website['url']
-        subDomainObj = tldextract.extract(url)
-        if subDomainObj.subdomain.lower() == "www":
-            query = '''SELECT website_id FROM websites where website_text in (?, ?)'''
-            with db.cursor() as cur:
-                domainText = "{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
-                cur.execute(query, (url, domainText,))
-                res = cur.fetchall()
-                if len(res) > 0:
-                    website_id = res[0][0]
-        else:
-            query = '''SELECT website_id FROM websites where website_text in (?, ?)'''
-            with db.cursor() as cur:
-                cur.execute(query, (url, "www." + url,))
-                res = cur.fetchall()
-                if len(res) > 0:
-                    website_id = res[0][0]
+        website_id = check_website_exists(db, url)
 
         if website_id is None:
-            query = '''INSERT INTO websites SET website_text = ?'''
-            with db.cursor() as cur:
-                cur.execute(query, (url,))
-                query = '''SELECT website_id FROM websites where website_text = ?'''
-                with db.cursor() as cur:
-                    cur.execute(query, (url,))
-                    res = cur.fetchall()
-                    website_id = res[0][0]
+            # add the website and fetch website_id
+            website_id = add_website(db, url)
 
         # Now, we have website_id
         # Convert date time string to datetime object
@@ -392,3 +401,19 @@ def insert_website_list(db, participant_id, website_list):
         query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, password_reset_count = ?, date = ?'''
         with db.cursor() as cur:
             cur.execute(query, (participant_id, website_id, website['reset_count'], dateTimeObj,))
+
+
+def get_participant_id(db, one_way_hash):
+    # Insert new participant ID
+    cursor = db.cursor()
+    query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
+    cursor.execute(query)
+    if cursor.rowcount > 0:
+        return cursor.fetchone()[0]
+    else:
+        query = "INSERT INTO password_set SET pwset_name='" + one_way_hash + "', max_pass_length=50"
+        cursor.execute(query)
+        db.commit()
+        query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
+        cursor.execute(query)
+        return cursor.fetchone()[0]

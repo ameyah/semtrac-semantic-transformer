@@ -26,6 +26,7 @@ import ssl
 import urllib
 import json
 import participant
+import hashlib
 
 # Import POS Tagger
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -594,15 +595,6 @@ def generateCandidates(wordList, password):
     return candidates
 
 
-def get_post_data(self, ctype, pdict):
-    if ctype == 'multipart/form-data':
-        postvars = cgi.parse_multipart(self.rfile, pdict)
-    elif ctype == 'application/x-www-form-urlencoded':
-        length = int(self.headers.getheader('content-length'))
-        postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
-    return postvars
-
-
 def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
     global db, options, participantObj
 
@@ -613,44 +605,85 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             print self.path
             if "/website/save" in self.path:
                 ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = get_post_data(self, ctype, pdict)
-                websiteListData = json.loads(postvars['data'][0])
+                postvars = self.get_post_data(ctype, pdict)
+                if postvars != '':
+                    websiteListData = json.loads(postvars['data'][0])
 
-                # save website list
-                insert_website_list(db, participantObj.get_participant_id(), websiteListData)
+                    # save website list
+                    insert_website_list(db, participantObj.get_participant_id(), websiteListData)
+                    self.send_ok_response()
+                else:
+                    self.send_bad_request_response()
 
-            elif "/participant" in self.path:
+            elif "/participant/id" in self.path:
                 ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = get_post_data(self, ctype, pdict)
+                postvars = self.get_post_data(ctype, pdict)
                 # set current active participant
-                participantObj.set_participant_id(int(postvars['id'][0]))
+                if postvars != '':
+                    participantObj.set_participant_id(int(postvars['id'][0]))
+                    self.send_ok_response()
+                else:
+                    self.send_bad_request_response()
 
+
+            elif "/participant/website" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = self.get_post_data(ctype, pdict)
+                # set current active participant
+                if postvars != '':
+                    participantObj.set_active_website(str(postvars['url'][0]))
+                    self.send_ok_response()
+                else:
+                    self.send_bad_request_response()
+
+            else:
+                self.send_bad_request_response()
+
+        def get_post_data(self, ctype, pdict):
+            if ctype == 'multipart/form-data':
+                postvars = cgi.parse_multipart(self.rfile, pdict)
+            elif ctype == 'application/x-www-form-urlencoded':
+                length = int(self.headers.getheader('content-length'))
+                postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+            else:
+                postvars = ''
+            return postvars
 
         # handle GET command
         def do_GET(self):
             try:
-                # getParams = self.path.split("transform?")[1]
-                parsed = urlparse.urlparse(self.path)
-                clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
-                websiteUrl = urlparse.parse_qs(parsed.query)['url'][0]
-                clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
-                print clearPasswordURIDecoded
-                print websiteUrl
+                if "/participant/id" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
+                    participant_id = get_participant_id(db, one_way_hash)
+                    participantObj.set_participant_id(participant_id)
+                    self.send_ok_response(data=participant_id)
 
-                # send code 200 response
-                self.send_response(200)
-                self.send_header('Content-type', 'text-html')
-                self.end_headers()
+                elif "/transform" in self.path:
+                    # getParams = self.path.split("transform?")[1]
+                    parsed = urlparse.urlparse(self.path)
+                    clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
+                    # For websiteUrl, first check whether participantObj has an active url
+                    activeWebsite = participantObj.get_active_website()
+                    if activeWebsite != '':
+                        websiteUrl = activeWebsite
+                    else:
+                        websiteUrl = urlparse.parse_qs(parsed.query)['url'][0]
+                    clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
+                    self.send_ok_response()
 
-                # First insert the login website in the database
-                transformed_password_id = insert_login_website(db, options.password_set, websiteUrl)
+                    # First insert the login website in the database
+                    transformed_password_id = get_transformed_password_id(db, participantObj.get_participant_id(), websiteUrl)
 
-                self.segmentPassword(clearPasswordURIDecoded)
-                self.posTagging()
-                self.grammarGeneration(transformed_password_id)
+                    self.segmentPassword(clearPasswordURIDecoded)
+                    self.posTagging()
+                    self.grammarGeneration(transformed_password_id)
 
-                # Delete original password after transformation
-                self.clearOriginalData()
+                    # Delete original password after transformation
+                    self.clearOriginalData()
+                    participantObj.reset_active_website()
+                else:
+                    self.send_bad_request_response()
             except oursql.Error as e:
                 print e
                 print "exception"
@@ -658,6 +691,21 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
             return
 
+        def send_ok_response(self, **kwargs):
+            # send code 200 response
+            self.send_response(200)
+            self.send_header('Content-type', 'text-html')
+            self.end_headers()
+            if kwargs.get("data"):
+                self.wfile.write(kwargs.get("data"))
+
+        def send_bad_request_response(self):
+            # send code 200 response
+            self.send_response(400)
+
+        # suppress logs
+        def log_message(self, format, *args):
+            return
 
         def segmentPassword(self, clearPassword):
             print clearPassword
@@ -686,7 +734,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 # continue  # skipping whitespace password
 
             # add Password to database temporarily.
-            pass_id = addSocketPassword(db, clearPassword, options.password_set)
+            pass_id = addSocketPassword(db, clearPassword, participantObj.get_participant_id())
 
             """
             currPass = p[1]
@@ -742,7 +790,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
         def posTagging(self):
             try:
-                self.passwordSegmentsDb = database.PwdDb(options.password_set, sample=options.sample,
+                self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample,
                                                          save_cachesize=500000)
                 pos_tagger.main(self.passwordSegmentsDb, pos_tagger_data, options.dryrun, options.stats,
                                 options.verbose)
@@ -753,9 +801,10 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
         def grammarGeneration(self, transformed_password_id):
             # grammar.select_treecut(options.password_set, 5000)
-            self.passwordSegmentsDb = database.PwdDb(options.password_set, sample=options.sample)
+            self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample)
             try:
-                grammar.main(self.passwordSegmentsDb, transformed_password_id, options.password_set, options.dryrun,
+                grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
+                             options.dryrun,
                              options.verbose,
                              "../grammar3", options.tags)
             except KeyboardInterrupt:
@@ -774,11 +823,11 @@ def sqlMine(dictSetIds):
     '''Main function to mine the password set with the dictionary set.'''
     global db, options
 
-    offset = lastPassword() if options.cont else options.offset
+    # offset = lastPassword() if options.cont else options.offset
 
     if options.reset:
         print "clearing results..."
-        clearResults(db, options.password_set)
+        clearResults(db, participantObj.get_participant_id())
 
     print "caching frequency information"
     freqInfo = freqReadCache(db)
@@ -837,7 +886,7 @@ def main(opts):
 
 def cli_options():
     parser = argparse.ArgumentParser()
-    parser.add_argument('password_set', default=1, type=int,
+    parser.add_argument('-p', '--password_set', default=1, type=int,
                         help='the id of the collection of passwords to be processed')
     parser.add_argument('-v', '--verbose', action='store_true', help='prints every password processed')
     parser.add_argument('-e', '--erase', action='store_true', help='erase dynamic dictionaries')
@@ -854,7 +903,7 @@ def cli_options():
     # db_group.add_argument('--user', type=str, default='root', help="db username for authentication")
     # db_group.add_argument('--pwd',  type=str, default='', help="db pwd for authentication")
     # db_group.add_argument('--host', type=str, default='localhost', help="db host")
-    #db_group.add_argument('--port', type=int, default=3306, help="db port")
+    # db_group.add_argument('--port', type=int, default=3306, help="db port")
 
     g = parser.add_mutually_exclusive_group()
     g.add_argument('-o', '--offset', type=int, default=0, help='skips processing N first passwords')
