@@ -63,7 +63,7 @@ def get_grammar_id(grammar_text):
     res = cursor.fetchall()
     if len(res) > 0:
         # Grammar already present. Get grammar_id
-        print res[0]['grammar_id']
+        # print res[0]['grammar_id']
         return res[0]['grammar_id']
     else:
         # Insert grammar_text and get its id
@@ -71,7 +71,7 @@ def get_grammar_id(grammar_text):
         conn.commit()
         cursor.execute(query.get_grammar_id(grammar_text))
         res = cursor.fetchall()
-        print res
+        # print res
         return res[0]['grammar_id']
 
 
@@ -129,9 +129,9 @@ class PwdDb():
             extent = self.id_extent_parsed(pwset_id) # min and max pass_id to sample from
             random_ids = self.random_ids(extent[0], extent[0], limit)
         
-        print 'Fetching password segments...'
+        # print 'Fetching password segments...'
         self.readcursor.execute(query.segments(pwset_id, limit, offset, random_ids, exceptions))
-        print 'Password segments fetched.'
+        # print 'Password segments fetched.'
 
         # fetching the first password
         self.fill_buffer()
@@ -215,7 +215,7 @@ class PwdDb():
 #        u.start()
     
     def flush_save (self):
-        print "updating {} records on the database...".format(len(self.savebuffer)) 
+        # print "updating {} records on the database...".format(len(self.savebuffer))
         self.conn_save.ping(True) # if connection has died, ressurect it
         self.savecursor.executemany("UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;", self.savebuffer)
         self.conn_save.commit()

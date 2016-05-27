@@ -342,13 +342,19 @@ def add_website(db, website_url):
 
 
 def get_transformed_password_id(db, password_set, website_url):
+    """Returns id of transformed_passwords table corresponding to password_set and website_url
+    This function first grabs website_id from website_url and then queries transformed_passwords table
+    for transformed_password ID.
+    Modification: Grab the transformed_password ID for row which doesn't have password_text set
+    satisfying the above conditions. If there is no such row, insert it."""
+
     website_id = check_website_exists(db, website_url)
 
     if website_id is None:
         # add the website and fetch website_id
         website_id = add_website(db, website_url)
 
-    query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id=? AND website_id=?'''
+    query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id=? AND website_id=? AND password_text is NULL'''
     with db.cursor() as cur:
         cur.execute(query, (password_set, website_id,))
         res = cur.fetchall()
@@ -360,7 +366,7 @@ def get_transformed_password_id(db, password_set, website_url):
             query = '''INSERT INTO transformed_passwords SET website_id = ?, pwset_id = ?'''
             with db.cursor() as cur:
                 cur.execute(query, (website_id, password_set,))
-                query = '''SELECT password_id FROM transformed_passwords WHERE website_id = ? AND pwset_id = ?'''
+                query = '''SELECT password_id FROM transformed_passwords WHERE website_id = ? AND pwset_id = ? AND password_text is NULL'''
                 with db.cursor() as cur:
                     cur.execute(query, (website_id, password_set,))
                     password_id = cur.fetchall()[0][0]
@@ -422,7 +428,7 @@ def get_participant_id(db, one_way_hash):
 def get_transformed_passwords_results(db, one_way_hash):
     participant_id = get_participant_id(db, one_way_hash)
 
-    query = '''SELECT website_id, password_reset_count, password_text FROM transformed_passwords WHERE pwset_id = ?'''
+    query = '''SELECT website_id, password_reset_count, password_text FROM transformed_passwords WHERE pwset_id = ? ORDER BY website_id'''
     with db.cursor() as cur:
         cur.execute(query, (participant_id,))
         res = cur.fetchall()

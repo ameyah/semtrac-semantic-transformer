@@ -84,33 +84,33 @@ class WriteBuffer(object):
         query3 = '''INSERT INTO set_contains (set_id, dict_id, s_index, e_index) VALUES (?,?,?,?)'''
         # example:
         # (15, ([[('too', 0, 3), ('hot', 3, 6)], [('too', 0, 3), ('ott', 4, 7)]], 6))
-        print ("in _flush function")
+        # print ("in _flush function")
         with self._db.cursor() as cur:
             stage1 = self._genStage1()
             cur.execute("SET autocommit = 0;", plain_query=True)
             cur.execute("SET unique_checks = 0;", plain_query=True)
             cur.execute("SET foreign_key_checks = 0;", plain_query=True)
-            print("Stage 1 Commit Starting.")
+            # print("Stage 1 Commit Starting.")
             cur.executemany(query1, stage1) #commit the stage1
             cur.execute("COMMIT;", plain_query=True)
-            print("Stage 1 Commit Complete.")
+            # print("Stage 1 Commit Complete.")
             cur.execute(query2) #retrieve the last set_id added
 
             self._last_id = cur.fetchone()[0] #reset the last_id field
 
             stage2 = self._genStage2(self._last_id - len(stage1) + 1)
 
-            print("Stage 2 Commit Starting.")
+            # print("Stage 2 Commit Starting.")
             cur.executemany(query3, stage2)
             cur.execute("COMMIT;", plain_query=True)
-            print("Stage 2 Commit Complete.")
+            # print("Stage 2 Commit Complete.")
             cur.execute("SET autocommit = 1;", plain_query=True)
             cur.execute("SET unique_checks = 1;", plain_query=True)
             cur.execute("SET foreign_key_checks = 1;", plain_query=True)
             self._data = list()
         self._count = 0
         t1 = time.time()
-        print "Flush took {}.".format(t1-t0)
+        # print "Flush took {}.".format(t1-t0)
 
                 
     def _genStage1(self):

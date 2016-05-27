@@ -398,7 +398,7 @@ def generate_transformed_segment(segment, tag):
 def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_type):
     #    tags_file = open('grammar/debug.txt', 'w+')
 
-    print "Grammar Generation Starting..."
+    # print "Grammar Generation Starting..."
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
 

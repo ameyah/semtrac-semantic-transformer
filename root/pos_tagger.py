@@ -71,7 +71,7 @@ def main(db, pos_tagger, dryrun, stats, verbose):
     with Timer("POS tagging"):
         total = db.sets_size
 
-        print "Connected to database, tagging..."
+        # print "Connected to database, tagging..."
 
         lastpw = None
 
