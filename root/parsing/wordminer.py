@@ -685,8 +685,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 elif "/participant/results" in self.path:
                     parsed = urlparse.urlparse(self.path)
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
-                    get_transformed_passwords_results(db, one_way_hash)
-                    self.send_ok_response()
+                    resultDict = get_transformed_passwords_results(db, one_way_hash)
+                    self.send_ok_response(data=json.dumps(resultDict))
                 else:
                     self.send_bad_request_response()
             except oursql.Error as e:
@@ -713,8 +713,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             return
 
         def segmentPassword(self, clearPassword):
-            print clearPassword
-            print freqInfo
+            # print clearPassword
+            # print freqInfo
 
             # passwordCount = rbuff._count
             #
@@ -838,22 +838,22 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    # with timer.Timer('n-grams load'):
-    #     loadNgrams(db)
+    with timer.Timer('n-grams load'):
+        loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    # dictionary = getDictionary(db, dictSetIds)
+    dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
     """
     # Create a TCP/IP socket
@@ -868,7 +868,7 @@ def sqlMine(dictSetIds):
     """
 
     server_address = ('127.0.0.1', 443)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')

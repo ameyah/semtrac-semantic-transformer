@@ -420,14 +420,7 @@ def get_participant_id(db, one_way_hash):
 
 
 def get_transformed_passwords_results(db, one_way_hash):
-    query = '''SELECT pwset_id FROM password_set WHERE pwset_name = ?'''
-    with db.cursor() as cur:
-        cur.execute(query, (one_way_hash,))
-        res = cur.fetchall()
-        if len(res) == 1:
-            participant_id = res[0][0]
-        else:
-            return False
+    participant_id = get_participant_id(db, one_way_hash)
 
     query = '''SELECT website_id, password_reset_count, password_text FROM transformed_passwords WHERE pwset_id = ?'''
     with db.cursor() as cur:
@@ -445,4 +438,13 @@ def get_transformed_passwords_results(db, one_way_hash):
                     website_text = cur.fetchall()[0][0]
                     passwordArr[0] = website_text
 
-            print transformed_passwords
+            resultDict = {
+                'participant_id': participant_id,
+                'transformed_passwords': transformed_passwords
+            }
+            return resultDict
+        else:
+            resultDict = {
+                'participant_id': participant_id
+            }
+            return resultDict

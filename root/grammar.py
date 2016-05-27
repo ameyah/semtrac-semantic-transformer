@@ -430,14 +430,7 @@ def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_t
         patterns_dist[pattern] += 1
 
         # Save transformed password in the database if transformed_password_id is not None
-        print password + " - " + transformedPassword
-        if transformed_password_id is None:
-            print password + " - " + transformedPassword
-        else:
-            # Save transformed password at corresponding location in database
-            print pattern
-            print transformed_password_id
-            database.save_transformed_password(transformed_password_id, transformedPassword, str(pattern))
+        database.save_transformed_password(transformed_password_id, transformedPassword, str(pattern))
 
         # outputs the classification results for debugging purposes
         if verbose:
