@@ -663,6 +663,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # getParams = self.path.split("transform?")[1]
                     parsed = urlparse.urlparse(self.path)
                     clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
+                    clearUsername = urlparse.parse_qs(parsed.query)['user'][0]
                     # For websiteUrl, first check whether participantObj has an active url
                     activeWebsite = participantObj.get_active_website()
                     if activeWebsite != '':
@@ -713,45 +714,15 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             return
 
         def segmentPassword(self, clearPassword):
-            # print clearPassword
-            # print freqInfo
-
-            # passwordCount = rbuff._count
-            #
-            # print "password file has: {:,} lines, starting miner...".format(passwordCount)
-            # pwcount = offset
-
-            # currTime = time.time()    # always wall time.
-            # lastResult = (None, None)  # (password, result)
             wbuff = WriteBuffer(db, dictionary, 100000)
-
-            """
-            if options.sample is not None and pwcount >= options.sample:
-                wbuff._flush()
-                break
-            """
 
             if len(clearPassword) == 0:
                 return
-                # continue  # skipping empty password
             if clearPassword.strip(" ") == '':
                 return
-                # continue  # skipping whitespace password
 
             # add Password to database temporarily.
             pass_id = addSocketPassword(db, clearPassword, participantObj.get_participant_id())
-
-            """
-            currPass = p[1]
-            if options.verbose:
-                print "Processing ({}) '{}'... ".format(pwcount, currPass),
-
-            # assuming the pwds come ordered, optimize for repeated occurrences
-            if currPass == lastResult[0]:
-                res = lastResult[1]
-            else:
-                res = mineLine(dbe, currPass, dictionary, freqInfo)
-            """
 
             res = mineLine(db, clearPassword, dictionary, freqInfo)
             if options.verbose:
@@ -760,38 +731,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             # store results
             if len(res) > 0:
                 flush = wbuff.addCommit(pass_id, res)
-                """
-                if flush:
-                    # saves the index of the last row processed
-                    path = os.path.join(currentdir(), 'log_mineline.txt')
-                    with open(path, 'w+') as f:
-                        f.write(str(pwcount))
-                """
-
-            """
-            if (pwcount % 5000) == 0:
-                print "Completed {} of {} passwords, {:3.2f}% done".format(pwcount, passwordCount, (float(pwcount) / passwordCount) * 100)
-                print "Elapsed wall time: {:.1f}s".format(time.time() - currTime)
-
-            lastResult = (currPass, res)
-            """
 
             wbuff._flush()  # flush the rest
-
-            """
-            print "creating read cache..."
-            rbuff = pwReadCache(dbe, options.password_set, 100000, offset)
-            """
-
-            """
-            for p in rbuff:
-                pwcount += 1
-            """
-            """
-            print("Elapsed wall time: {:.1f}s".format(time.time() - currTime))
-            print ("pwcount=", pwcount, "rbuff._count=", rbuff._count)
-            """
-
 
         def posTagging(self):
             try:
@@ -855,17 +796,6 @@ def sqlMine(dictSetIds):
 
         pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
-    """
-    # Create a TCP/IP socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Bind the socket to the port
-    server_address = ('localhost', 9000)
-    print >>sys.stderr, 'Listening on %s port %s' % server_address
-    sock.bind(server_address)
-
-    # Listen for incoming connections
-    sock.listen(1)
-    """
 
     server_address = ('127.0.0.1', 443)
     HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
