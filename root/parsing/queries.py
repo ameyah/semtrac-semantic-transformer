@@ -428,7 +428,7 @@ def get_participant_id(db, one_way_hash):
 def get_transformed_passwords_results(db, one_way_hash):
     participant_id = get_participant_id(db, one_way_hash)
 
-    query = '''SELECT website_id, password_reset_count, password_text FROM transformed_passwords WHERE pwset_id = ? ORDER BY website_id'''
+    query = '''SELECT website_id, password_reset_count, username_text, password_text FROM transformed_passwords WHERE pwset_id = ? ORDER BY website_id'''
     with db.cursor() as cur:
         cur.execute(query, (participant_id,))
         res = cur.fetchall()

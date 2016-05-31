@@ -11,7 +11,11 @@ import threading
 import query
 import random
 import util
-from timer import Timer
+import utils
+
+
+toEscape = ['\\', '\'', ' ']
+
 
 def connection():
     credentials = util.dbcredentials()
@@ -80,7 +84,14 @@ def save_transformed_password(transformed_password_id, transformed_password, gra
     grammar_id = get_grammar_id(grammar_text)
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(query.save_transformed_password(transformed_password_id, transformed_password, grammar_id))
+    cursor.execute(query.save_transformed_password(transformed_password_id, utils.escape(transformed_password, toEscape), grammar_id))
+    conn.commit()
+
+
+def save_transformed_username(transformed_password_id, transformed_username):
+    conn = connection()
+    cursor = conn.cursor()
+    cursor.execute(query.save_transformed_username(transformed_password_id, utils.escape(transformed_username, toEscape)))
     conn.commit()
 
 

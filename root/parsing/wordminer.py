@@ -595,6 +595,25 @@ def generateCandidates(wordList, password):
     return candidates
 
 
+def checkWebsiteSyntacticSimilarity(url1, url2):
+    if url1.lower() == url2.lower():
+        return True
+    else:
+        subDomainObjUrl1 = tldextract.extract(url1.lower())
+        subDomainObjUrl2 = tldextract.extract(url2.lower())
+        # first check whether domain and extension match
+        if (subDomainObjUrl1.domain == subDomainObjUrl2.domain) and (subDomainObjUrl1.suffix == subDomainObjUrl2.suffix):
+            # now check subdomain match
+            if (subDomainObjUrl1.subdomain == subDomainObjUrl2.subdomain) or \
+                    (subDomainObjUrl1.subdomain == "" and subDomainObjUrl2.subdomain == "www") or \
+                    (subDomainObjUrl1.subdomain == "www" and subDomainObjUrl2.subdomain == ""):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+
 def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
     global db, options, participantObj
 
@@ -669,8 +688,13 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     if activeWebsite != '':
                         websiteUrl = activeWebsite
                     else:
+                        # get active page URL from GET params
                         websiteUrl = urlparse.parse_qs(parsed.query)['url'][0]
+                        previousActiveWebsite = participantObj.get_previous_active_website()
+                        if checkWebsiteSyntacticSimilarity(websiteUrl, previousActiveWebsite):
+                            websiteUrl = previousActiveWebsite
                     clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
+                    clearUsernameURIDecoded = urllib.unquote(urllib.unquote(clearUsername))
                     self.send_ok_response()
 
                     # First insert the login website in the database
@@ -682,6 +706,15 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # Delete original password after transformation
                     self.clearOriginalData()
+
+                    # Transform usernames semantically. We'll use the same functions for now.
+                    # as the procedure is same, except that we dont have to store grammar.
+                    self.segmentPassword(clearUsernameURIDecoded)
+                    self.posTagging()
+                    self.grammarGeneration(transformed_password_id, type="username")
+
+                    self.clearOriginalData()
+
                     participantObj.reset_active_website()
                 elif "/participant/results" in self.path:
                     parsed = urlparse.urlparse(self.path)
@@ -700,6 +733,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         def send_ok_response(self, **kwargs):
             # send code 200 response
             self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'text-html')
             self.end_headers()
             if kwargs.get("data"):
@@ -708,6 +742,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         def send_bad_request_response(self):
             # send code 200 response
             self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
 
         # suppress logs
         def log_message(self, format, *args):
@@ -745,14 +780,14 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 traceback.print_exc()
                 sys.exit(1)
 
-        def grammarGeneration(self, transformed_password_id):
+        def grammarGeneration(self, transformed_password_id, **kwargs):
             # grammar.select_treecut(options.password_set, 5000)
             self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample)
             try:
                 grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
                              options.dryrun,
                              options.verbose,
-                             "../grammar3", options.tags)
+                             "../grammar3", options.tags, type=kwargs.get("type"))
             except KeyboardInterrupt:
                 db.finish()
                 raise

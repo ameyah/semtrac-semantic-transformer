@@ -127,3 +127,12 @@ def save_transformed_password(transformed_password_id, transformed_password, gra
     query = "UPDATE transformed_passwords SET password_text = '{}', grammar_id = {} WHERE password_id = {}".format(transformed_password,
                                                                                                                    grammar_id, transformed_password_id)
     return query
+
+
+def save_transformed_username(transformed_password_id, transformed_username):
+    """
+    Description: Returns query to update transformed_passwords table to store the corresponding transformed_username
+    """
+    query = "UPDATE transformed_passwords SET username_text = '{}' WHERE password_id = {}".format(transformed_username,
+                                                                                                                   transformed_password_id)
+    return query
