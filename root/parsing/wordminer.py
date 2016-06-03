@@ -682,7 +682,11 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # getParams = self.path.split("transform?")[1]
                     parsed = urlparse.urlparse(self.path)
                     clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
-                    clearUsername = urlparse.parse_qs(parsed.query)['user'][0]
+                    try:
+                        clearUsername = urlparse.parse_qs(parsed.query)['user'][0]
+                    except KeyError:
+                        # Username not captured
+                        clearUsername = ""
                     # For websiteUrl, first check whether participantObj has an active url
                     activeWebsite = participantObj.get_active_website()
                     if activeWebsite != '':

@@ -414,8 +414,9 @@ def get_participant_id(db, one_way_hash):
     cursor = db.cursor()
     query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
     cursor.execute(query)
-    if cursor.rowcount > 0:
-        return cursor.fetchone()[0]
+    res = cursor.fetchone()
+    if res is not None:
+        return res[0]
     else:
         query = "INSERT INTO password_set SET pwset_name='" + one_way_hash + "', max_pass_length=50"
         cursor.execute(query)
