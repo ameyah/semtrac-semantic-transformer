@@ -110,6 +110,10 @@ def orderSortSubsList(subslist):
     
     Sorts the list according to an order believed to produce the faster running
     of the algorithm.
+    Sorts such that to select segments which start with s_index in ascending order first,
+    but segments which are big lengthwise.
+    For example, in password "anyoneelse", "anyone" will appear first and then "any" & "one".
+    This is done so as to cover as lengthy segment as possible in the password
     '''
     # sorts first by e_index, then sorts by s_index
     temp = sorted(subslist, key=lambda x: x[2], reverse=False)
@@ -334,7 +338,8 @@ def setCover(currWord, remWords, passLength, sTime):
             currWord.append(remWords[0])
         if len(currWord) is 1 and isinstance(currWord[0], str):
             return ([currWord], len(currWord))
-        return ([currWord], evalLen(currWord))
+        return ([currWord], evalLen(currWord))  # This returns currWord appended with 1 remWords along with the actual
+        # length of all segments.
 
     maxLenSet = list()
     maxLen = 0
@@ -602,7 +607,8 @@ def checkWebsiteSyntacticSimilarity(url1, url2):
         subDomainObjUrl1 = tldextract.extract(url1.lower())
         subDomainObjUrl2 = tldextract.extract(url2.lower())
         # first check whether domain and extension match
-        if (subDomainObjUrl1.domain == subDomainObjUrl2.domain) and (subDomainObjUrl1.suffix == subDomainObjUrl2.suffix):
+        if (subDomainObjUrl1.domain == subDomainObjUrl2.domain) and (
+                    subDomainObjUrl1.suffix == subDomainObjUrl2.suffix):
             # now check subdomain match
             if (subDomainObjUrl1.subdomain == subDomainObjUrl2.subdomain) or \
                     (subDomainObjUrl1.subdomain == "" and subDomainObjUrl2.subdomain == "www") or \
@@ -703,14 +709,15 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.send_ok_response()
 
                     # First insert the login website in the database
-                    transformed_password_id = get_transformed_password_id(db, participantObj.get_participant_id(), websiteUrl)
+                    transformed_password_id = get_transformed_password_id(db, participantObj.get_participant_id(),
+                                                                          websiteUrl)
 
                     self.segmentPassword(clearPasswordURIDecoded)
                     self.posTagging()
-                    self.grammarGeneration(transformed_password_id)
+                    self.grammarGeneration(transformed_password_id, clearPassword=clearPasswordURIDecoded)
 
                     # Delete original password after transformation
-                    # self.clearOriginalData()
+                    self.clearOriginalData()
 
                     # Transform usernames semantically. We'll use the same functions for now.
                     # as the procedure is same, except that we dont have to store grammar.
@@ -718,7 +725,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.posTagging()
                     self.grammarGeneration(transformed_password_id, type="username")
 
-                    # self.clearOriginalData()
+                    self.clearOriginalData()
 
                     participantObj.reset_active_website()
                 elif "/participant/results" in self.path:
@@ -816,7 +823,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
                              options.dryrun,
                              options.verbose,
-                             "../grammar3", options.tags, type=kwargs.get("type"))
+                             "../grammar3", options.tags, type=kwargs.get("type"), clearPassword=kwargs.get("clearPassword"))
             except KeyboardInterrupt:
                 db.finish()
                 raise
@@ -859,7 +866,6 @@ def sqlMine(dictSetIds):
         COCATaggerPath = "../../files/coca_500k.csv"
 
         pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
-
 
     server_address = ('127.0.0.1', 443)
     HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)

@@ -316,16 +316,23 @@ def check_website_exists(db, website_url):
         if len(res) > 0:
             website_id = res[0][0]
         else:
-            # check if website_url contains "www."
+            # check if website_url contains "www." or sub domain is blank
             subDomainObj = tldextract.extract(website_url)
-            if subDomainObj.subdomain.lower() == "www":
+            print subDomainObj
+            if subDomainObj.subdomain.lower() == "www" or subDomainObj.subdomain.lower() == "":
                 with db.cursor() as cur:
                     domainText = "{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
                     cur.execute(query, (domainText,))
                     res = cur.fetchall()
                     if len(res) > 0:
                         website_id = res[0][0]
-
+                    else:
+                        if subDomainObj.subdomain.lower == "":
+                            domainText = "www.{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
+                            cur.execute(query, (domainText,))
+                            res = cur.fetchall()
+                            if len(res) > 0:
+                                website_id = res[0][0]
     return website_id
 
 
@@ -389,9 +396,9 @@ def insert_website_list(db, participant_id, website_list):
     # Reset website importance probabilities
     reset_website_probability(db, participant_id)
     # Remove previous entries of same participant_id
-    query = '''DELETE FROM transformed_passwords WHERE pwset_id = ?'''
-    with db.cursor() as cur:
-        cur.execute(query, (participant_id,))
+    # query = '''DELETE FROM transformed_passwords WHERE pwset_id = ?'''
+    # with db.cursor() as cur:
+    #     cur.execute(query, (participant_id,))
 
     for website in website_list:
         url = website['url']
@@ -408,18 +415,28 @@ def insert_website_list(db, participant_id, website_list):
 
         website_user_probability = 1 if website['important'] else 0
 
-        query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
+        # First check if entry exists in transformed_passwords table, update it else insert new entry
+        query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id = ? AND website_id = ?'''
         with db.cursor() as cur:
-            cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
+            cur.execute(query, (participant_id, website_id,))
+            password_rows = cur.fetchall()
+            if len(password_rows) > 0:
+                # update info for each result
+                for row in password_rows:
+                    query = '''UPDATE transformed_passwords SET website_probability = ?, password_reset_count = ?, date = ? WHERE password_id = ?'''
+                    cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, row[0],))
+            else:
+                query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
+                cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
 
-        # calculate new probability and store it
-        query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
-        with db.cursor() as cur:
-            cur.execute(query, (website_id,))
-            website_info = cur.fetchall()[0]
-            new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
-            query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
-            cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
+            # calculate new probability and store it
+            query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
+            with db.cursor() as cur:
+                cur.execute(query, (website_id,))
+                website_info = cur.fetchall()[0]
+                new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
+                query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
+                cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
 
 
 def get_participant_id(db, one_way_hash):
@@ -511,10 +528,7 @@ def reset_website_probability(db, participant_id):
                 websites_info = cur.fetchall()[0]
                 new_probability = calculate_new_probability_remove_user(websites_info[0], websites_info[1], user_website[1])
                 if new_probability is None:
-                    # The website has no users. Delete it
-                    query = '''DELETE FROM websites WHERE website_id=?'''
-                    cur.execute(query, (user_website[0],))
-                else:
-                    # update the probability and number of users in websites table
-                    query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
-                    cur.execute(query, (new_probability, (websites_info[1] - 1), user_website[0],))
+                    new_probability = 0
+                # update the probability and number of users in websites table
+                query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
+                cur.execute(query, (new_probability, (websites_info[1] - 1), user_website[0],))

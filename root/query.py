@@ -1,5 +1,4 @@
 
-
 names = "SELECT dict_text FROM dictionary where dictset_id = 20 or dictset_id = 30;"
 
 
@@ -31,8 +30,8 @@ def segments(pwset_id, limit, offset, pass_ids=None, exception=None):
         q = q + "LIMIT {} ".format(limit)
     if offset:
         q = q + "OFFSET {} ".format(offset)
-    
-#    print q
+
+    # print q
     return q
 
 
@@ -124,7 +123,8 @@ def save_transformed_password(transformed_password_id, transformed_password, gra
     """
     Description: Returns query to update transformed_passwords table to store the corresponding transformed_password
     """
-    query = "UPDATE transformed_passwords SET password_text = '{}', grammar_id = {} WHERE password_id = {}".format(transformed_password,
+    query = "UPDATE transformed_passwords SET password_text = '{}', grammar_id = {} WHERE password_id = {}".format \
+        (transformed_password,
                                                                                                                    grammar_id, transformed_password_id)
     return query
 
@@ -135,4 +135,13 @@ def save_transformed_username(transformed_password_id, transformed_username):
     """
     query = "UPDATE transformed_passwords SET username_text = '{}' WHERE password_id = {}".format(transformed_username,
                                                                                                                    transformed_password_id)
+    return query
+
+
+def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info):
+    """
+    Description: Returns query to insert capitalization info for transformed_segment along with transformed_password_id
+    """
+    query = "INSERT INTO transformed_segments SET transformed_pass_id = {}, segment = '{}', capital = '{}'".format \
+        (transformed_password_id, transformed_segment, capitalization_info)
     return query
