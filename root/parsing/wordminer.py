@@ -710,7 +710,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.grammarGeneration(transformed_password_id)
 
                     # Delete original password after transformation
-                    self.clearOriginalData()
+                    # self.clearOriginalData()
 
                     # Transform usernames semantically. We'll use the same functions for now.
                     # as the procedure is same, except that we dont have to store grammar.
@@ -718,7 +718,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.posTagging()
                     self.grammarGeneration(transformed_password_id, type="username")
 
-                    self.clearOriginalData()
+                    # self.clearOriginalData()
 
                     participantObj.reset_active_website()
                 elif "/participant/results" in self.path:
@@ -843,26 +843,26 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    # with timer.Timer('n-grams load'):
-    #     loadNgrams(db)
+    with timer.Timer('n-grams load'):
+        loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    # dictionary = getDictionary(db, dictSetIds)
+    dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
 
     server_address = ('127.0.0.1', 443)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')
