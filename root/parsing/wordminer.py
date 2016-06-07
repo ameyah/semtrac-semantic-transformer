@@ -28,7 +28,7 @@ import json
 import participant
 import hashlib
 
-# Import POS Tagger
+# Import POS Tagger and Grammar Generator
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pos_tagger
 import database
@@ -630,6 +630,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # save website list
                     insert_website_list(db, participantObj.get_participant_id(), websiteListData)
+                    # website_list_info = get_website_list_probability(db, websiteListData)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
@@ -725,6 +726,30 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
                     resultDict = get_transformed_passwords_results(db, one_way_hash)
                     self.send_ok_response(data=json.dumps(resultDict))
+                elif "/website/importance" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    website_url = urlparse.parse_qs(parsed.query)['url'][0]
+                    if website_url != '':
+                        importance = get_website_probability(db, website_url)
+                        print website_url + " - " + importance
+                        self.send_ok_response(data=importance)
+                    else:
+                        self.send_bad_request_response()
+                elif "/website/list/importance" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    # print json.loads(urlparse.parse_qs(parsed.query)['urls'][0])
+                    website_urls = json.loads(urlparse.parse_qs(parsed.query)['urls'][0])
+                    website_importance_data = get_website_list_probability(db, website_urls)
+                    self.send_ok_response(data=json.dumps(website_importance_data))
+                    """
+                    if website_url != '':
+                        importance = get_website_probability(db, website_url)
+                        print website_url + " - " + importance
+                        self.send_ok_response(data=importance)
+                    else:
+                        self.send_bad_request_response()
+
+                    """
                 else:
                     self.send_bad_request_response()
             except oursql.Error as e:
@@ -818,26 +843,26 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    with timer.Timer('n-grams load'):
-        loadNgrams(db)
+    # with timer.Timer('n-grams load'):
+    #     loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    dictionary = getDictionary(db, dictSetIds)
+    # dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
 
     server_address = ('127.0.0.1', 443)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')

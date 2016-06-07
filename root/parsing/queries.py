@@ -386,6 +386,8 @@ def clear_original_data(db):
 
 
 def insert_website_list(db, participant_id, website_list):
+    # Reset website importance probabilities
+    reset_website_probability(db, participant_id)
     # Remove previous entries of same participant_id
     query = '''DELETE FROM transformed_passwords WHERE pwset_id = ?'''
     with db.cursor() as cur:
@@ -404,9 +406,20 @@ def insert_website_list(db, participant_id, website_list):
         # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
         dateTimeObj = parser.parse(website['date'])
 
-        query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, password_reset_count = ?, date = ?'''
+        website_user_probability = 1 if website['important'] else 0
+
+        query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
         with db.cursor() as cur:
-            cur.execute(query, (participant_id, website_id, website['reset_count'], dateTimeObj,))
+            cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
+
+        # calculate new probability and store it
+        query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
+        with db.cursor() as cur:
+            cur.execute(query, (website_id,))
+            website_info = cur.fetchall()[0]
+            new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
+            query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
+            cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
 
 
 def get_participant_id(db, one_way_hash):
@@ -455,3 +468,53 @@ def get_transformed_passwords_results(db, one_way_hash):
                 'participant_id': participant_id
             }
             return resultDict
+
+
+def get_website_probability(db, website_url):
+    website_id = check_website_exists(db, website_url)
+    if website_id is not None:
+        query = '''SELECT probability FROM websites WHERE website_id=?'''
+        with db.cursor() as cur:
+            cur.execute(query, (website_id,))
+            if cur.fetchall()[0][0] >= 0.50:
+                return True
+            else:
+                return False
+    else:
+        return None
+
+
+def get_website_list_probability(db, website_list):
+    website_list_info = []
+    for website in website_list:
+        url = website['url']
+        importance = get_website_probability(db, url)
+        if importance is not None:
+            website_info = {
+                'id': website['id'],
+                'url': url,
+                'important': importance
+            }
+            website_list_info.append(website_info)
+    return website_list_info
+
+
+def reset_website_probability(db, participant_id):
+    query = '''SELECT website_id, website_probability FROM transformed_passwords WHERE pwset_id=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (participant_id,))
+        user_websites_info = cur.fetchall()
+        if len(user_websites_info) > 0:
+            for user_website in user_websites_info:
+                query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
+                cur.execute(query, (user_website[0],))
+                websites_info = cur.fetchall()[0]
+                new_probability = calculate_new_probability_remove_user(websites_info[0], websites_info[1], user_website[1])
+                if new_probability is None:
+                    # The website has no users. Delete it
+                    query = '''DELETE FROM websites WHERE website_id=?'''
+                    cur.execute(query, (user_website[0],))
+                else:
+                    # update the probability and number of users in websites table
+                    query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
+                    cur.execute(query, (new_probability, (websites_info[1] - 1), user_website[0],))
