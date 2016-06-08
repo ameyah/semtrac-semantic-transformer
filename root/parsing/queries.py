@@ -400,6 +400,7 @@ def insert_website_list(db, participant_id, website_list):
     # with db.cursor() as cur:
     #     cur.execute(query, (participant_id,))
 
+    new_website_id_list = ()
     for website in website_list:
         url = website['url']
         website_id = check_website_exists(db, url)
@@ -408,6 +409,7 @@ def insert_website_list(db, participant_id, website_list):
             # add the website and fetch website_id
             website_id = add_website(db, url)
 
+        new_website_id_list += (int(website_id),)
         # Now, we have website_id
         # Convert date time string to datetime object
         # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
@@ -437,6 +439,17 @@ def insert_website_list(db, participant_id, website_list):
                 new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
                 query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
                 cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
+
+    # Now remove the websites present in database, but not in newly received website_list and websites which dont have
+    # any password associated with them
+    if len(new_website_id_list) == 1:
+        # to remove the trailing comma
+        website_id_list_str = "(" + str(new_website_id_list[0]) + ")"
+    else:
+        website_id_list_str = str(new_website_id_list)
+    query = '''DELETE FROM transformed_passwords WHERE pwset_id = ? and website_id not in {} and password_text is null'''.format(website_id_list_str)
+    with db.cursor() as cur:
+        cur.execute(query, (participant_id,))
 
 
 def get_participant_id(db, one_way_hash):
