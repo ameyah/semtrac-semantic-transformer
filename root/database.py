@@ -95,10 +95,10 @@ def save_transformed_username(transformed_password_id, transformed_username):
     conn.commit()
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info):
+def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info, special_char_info):
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(query.save_transformed_segment_info(transformed_password_id, utils.escape(transformed_segment, toEscape), capitalization_info))
+    cursor.execute(query.save_transformed_segment_info(transformed_password_id, utils.escape(transformed_segment, toEscape), capitalization_info, special_char_info))
     conn.commit()
 
 

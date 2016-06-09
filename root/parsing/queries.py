@@ -318,21 +318,19 @@ def check_website_exists(db, website_url):
         else:
             # check if website_url contains "www." or sub domain is blank
             subDomainObj = tldextract.extract(website_url)
-            print subDomainObj
-            if subDomainObj.subdomain.lower() == "www" or subDomainObj.subdomain.lower() == "":
+            if subDomainObj.subdomain.lower() == "www":
                 with db.cursor() as cur:
                     domainText = "{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
                     cur.execute(query, (domainText,))
                     res = cur.fetchall()
                     if len(res) > 0:
                         website_id = res[0][0]
-                    else:
-                        if subDomainObj.subdomain.lower == "":
-                            domainText = "www.{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
-                            cur.execute(query, (domainText,))
-                            res = cur.fetchall()
-                            if len(res) > 0:
-                                website_id = res[0][0]
+            elif subDomainObj.subdomain.lower() == "":
+                domainText = "www.{}.{}".format(subDomainObj.domain, subDomainObj.suffix)
+                cur.execute(query, (domainText,))
+                res = cur.fetchall()
+                if len(res) > 0:
+                    website_id = res[0][0]
     return website_id
 
 

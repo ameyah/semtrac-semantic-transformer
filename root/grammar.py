@@ -39,6 +39,8 @@ nouns_tree = None
 verbs_tree = None
 node_index = None
 
+SPECIAL_CHAR_MATCH = re.compile(r'[!1~@#3$5\|0]', re.I)
+
 
 def select_treecut(pwset_id, abstraction_level):
     """ Load the noun and verb trees and calculates the their respective tree 
@@ -61,7 +63,7 @@ def select_treecut(pwset_id, abstraction_level):
         if node.key not in node_index:
             node_index[node.key] = node
 
-            #-------------------------------------------
+            # -------------------------------------------
 
 
 class DictionaryTag:
@@ -271,7 +273,7 @@ def classify_word(segment):
         return refine_gap(segment)
 
     # if re.match(r'\d+', word):
-    #     return 'number' + str(length)
+    # return 'number' + str(length)
     # elif re.match(r'[^a-zA-Z0-9]+', word):
     #     return 'special' + str(length)
     else:
@@ -353,21 +355,45 @@ def get_parent_pos(pos):
     return pos
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, start_index, end_index, clear_password):
+def save_transformed_segment_info(transformed_password_id, transformed_segment, segment_tag, start_index, end_index,
+                                  clear_password):
     # Extract clear password segment based on start_index and end_index
     clear_password_segment = clear_password[start_index:end_index]
-    capitalization_info = ['0', '0', '0']
-    # check if first and last letters are capital
-    if clear_password_segment[0] in string.uppercase:
-        capitalization_info[0] = "1"
-    if clear_password_segment[len(clear_password_segment) - 1] in string.uppercase:
-        capitalization_info[2] = "1"
-    for i in range(1, len(clear_password_segment) - 1):
-        if clear_password_segment[i] in string.uppercase:
-            capitalization_info[1] = "1"
-            break
-    capitalization_info = "".join(capitalization_info)
-    database.save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info)
+
+    def handle_capitalization(match_str):
+        capital_position_list = ['0', '0', '0']
+        # check if first and last letters are capital
+        if match_str[0] in string.uppercase:
+            capital_position_list[0] = "1"
+        if match_str[len(match_str) - 1] in string.uppercase:
+            capital_position_list[2] = "1"
+        for i in range(1, len(match_str) - 1):
+            if match_str[i] in string.uppercase:
+                capital_position_list[1] = "1"
+                break
+        return "".join(capital_position_list)
+
+    def handle_special_char_mapping(match_str):
+        special_char_info = ['0', '0', '0']
+        for m in SPECIAL_CHAR_MATCH.finditer(match_str):
+            if m.start() == 0:
+                special_char_info[0] = "1"
+            elif m.start() == len(match_str) - 1:
+                special_char_info[2] = "1"
+            else:
+                special_char_info[1] = "1"
+        return "".join(special_char_info)
+
+    capitalization_info = handle_capitalization(clear_password_segment)
+    # for generating special character info, first check whether the segment is a valid word
+    # remove any digits from segment_tag
+    segment_tag_no_digits = ''.join([i for i in segment_tag if not i.isdigit()])
+    if segment_tag_no_digits not in ["special", "char", "number"]:
+        special_char_info = handle_special_char_mapping(clear_password_segment)
+    else:
+        special_char_info = "000"
+    database.save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info,
+                                           special_char_info)
 
 
 def generate_transformed_segment(segment, tag):
@@ -416,7 +442,7 @@ def generate_transformed_segment(segment, tag):
 
 
 def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_type, **kwargs):
-    #    tags_file = open('grammar/debug.txt', 'w+')
+    # tags_file = open('grammar/debug.txt', 'w+')
 
     # print "Grammar Generation Starting..."
     patterns_dist = FreqDist()  # distribution of patterns
@@ -448,7 +474,7 @@ def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_t
 
             # Save transformed segment with corresponding capitalization information
             if kwargs.get("clearPassword") is not None:
-                save_transformed_segment_info(transformed_password_id, transformedSegment, s.s_index, s.e_index,
+                save_transformed_segment_info(transformed_password_id, transformedSegment, tag, s.s_index, s.e_index,
                                               kwargs.get("clearPassword"))
 
             segments_dist[tag][s.word] += 1
@@ -522,7 +548,7 @@ def options():
         to be ignored. One id per line. Depending on the size of this file \
         you might need to increase MySQL's variable max_allowed_packet.")
     # parser.add_argument('--onlypos', action='store_true', \
-    #     help="Turn this switch if you want the grammar to have only "\
+    # help="Turn this switch if you want the grammar to have only "\
     #     "POS symbols, no semantic tags (synsets)")
     parser.add_argument('-a', '--abstraction', type=int, default=5000, \
                         help='Abstraction Level. An integer > 0, correspoding to the ' \
@@ -548,7 +574,7 @@ if __name__ == '__main__':
 
     # Generalization of POS not required for USC Cloudsweeper. Using CLAWS7 tagset
     # if not opts.tags == 'pos':
-    #     select_treecut(opts.password_set, opts.abstraction)
+    # select_treecut(opts.password_set, opts.abstraction)
 
     try:
         with Timer('grammar generation'):

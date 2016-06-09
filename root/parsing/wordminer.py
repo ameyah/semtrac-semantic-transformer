@@ -42,6 +42,20 @@ dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 
 ENABLE_CHAR_CHUNKS = True
 
+special_char_mapping = {
+    '!': 'i',
+    '1': 'i',
+    '~': 's',
+    '@': 'a',
+    '#': 'h',
+    '3': 'e',
+    '$': 's',
+    '5': 's',
+    '|': 'i',
+    '0': 'o'
+}
+
+SPECIAL_CHAR_MATCH = re.compile(r'[!1~@#3$5\|0]', re.I)
 
 # database Authentication Parameters
 # USER = ""
@@ -103,6 +117,12 @@ def checkResSubstr(results):
             good.add(results[y])
         substr = False
     return list(good)
+
+
+def get_re_replaced_string(re_pattern, match_str, mapping_dict):
+    for m in re_pattern.finditer(match_str):
+        match_str = match_str.replace(m.group(), mapping_dict[m.group()])
+    return match_str
 
 
 def orderSortSubsList(subslist):
@@ -529,7 +549,7 @@ def processGaps(db, resultSet, password):
     return resultSet
 
 
-def mineLine(db, password, dictionary, freqInfo):
+def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
     """Breaks a password in pieces, which can be words (present in the dictionaries) or sequences of
        numbers, symbols and characters that do not constitute a word.
     """
@@ -551,8 +571,16 @@ def mineLine(db, password, dictionary, freqInfo):
         permutations = permuteString(password.lower())
         words = list()
         for x in permutations:
+            print x[0]
             if x[0] in dictionary:
                 words.append(x)
+            else:
+                # check for special mappings
+                if SPECIAL_CHAR_MATCH.match(x[0]) is not None and checkSpecialChars:
+                    replaced_string = get_re_replaced_string(SPECIAL_CHAR_MATCH, x[0], special_char_mapping)
+                    print replaced_string
+                    if replaced_string in dictionary:
+                        words.append((replaced_string, x[1], x[2]))
 
         candidates = generateCandidates(words, password)
         # print candidates
@@ -712,7 +740,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     transformed_password_id = get_transformed_password_id(db, participantObj.get_participant_id(),
                                                                           websiteUrl)
 
-                    self.segmentPassword(clearPasswordURIDecoded)
+                    self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
                     self.grammarGeneration(transformed_password_id, clearPassword=clearPasswordURIDecoded)
 
@@ -721,7 +749,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # Transform usernames semantically. We'll use the same functions for now.
                     # as the procedure is same, except that we dont have to store grammar.
-                    self.segmentPassword(clearUsernameURIDecoded)
+                    self.segmentPassword(clearUsernameURIDecoded, False)
                     self.posTagging()
                     self.grammarGeneration(transformed_password_id, type="username")
 
@@ -784,7 +812,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         def log_message(self, format, *args):
             return
 
-        def segmentPassword(self, clearPassword):
+        def segmentPassword(self, clearPassword, checkSpecialChars):
             wbuff = WriteBuffer(db, dictionary, 100000)
 
             if len(clearPassword) == 0:
@@ -795,7 +823,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             # add Password to database temporarily.
             pass_id = addSocketPassword(db, clearPassword, participantObj.get_participant_id())
 
-            res = mineLine(db, clearPassword, dictionary, freqInfo)
+            res = mineLine(db, clearPassword, dictionary, freqInfo, checkSpecialChars)
             if options.verbose:
                 print "[Done]"
 

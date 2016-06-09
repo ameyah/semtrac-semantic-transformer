@@ -138,10 +138,10 @@ def save_transformed_username(transformed_password_id, transformed_username):
     return query
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info):
+def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info, special_char_info):
     """
     Description: Returns query to insert capitalization info for transformed_segment along with transformed_password_id
     """
-    query = "INSERT INTO transformed_segments SET transformed_pass_id = {}, segment = '{}', capital = '{}'".format \
-        (transformed_password_id, transformed_segment, capitalization_info)
+    query = "INSERT INTO transformed_segments SET transformed_pass_id = {}, segment = '{}', capital = '{}', special = '{}'".format \
+        (transformed_password_id, transformed_segment, capitalization_info, special_char_info)
     return query
