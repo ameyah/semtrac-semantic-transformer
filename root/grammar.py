@@ -355,7 +355,7 @@ def get_parent_pos(pos):
     return pos
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, segment_tag, start_index, end_index,
+def save_transformed_segment_info(transformed_cred_id, transformed_segment, segment_tag, start_index, end_index,
                                   clear_password):
     # Extract clear password segment based on start_index and end_index
     clear_password_segment = clear_password[start_index:end_index]
@@ -392,7 +392,7 @@ def save_transformed_segment_info(transformed_password_id, transformed_segment, 
         special_char_info = handle_special_char_mapping(clear_password_segment)
     else:
         special_char_info = "000"
-    database.save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info,
+    database.save_transformed_segment_info(transformed_cred_id, transformed_segment, capitalization_info,
                                            special_char_info)
 
 
@@ -441,7 +441,7 @@ def generate_transformed_segment(segment, tag):
                 return segment.word
 
 
-def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_type, **kwargs):
+def main(db, transformed_cred_id, pwset_id, dryrun, verbose, basepath, tag_type, **kwargs):
     # tags_file = open('grammar/debug.txt', 'w+')
 
     # print "Grammar Generation Starting..."
@@ -474,7 +474,7 @@ def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_t
 
             # Save transformed segment with corresponding capitalization information
             if kwargs.get("clearPassword") is not None:
-                save_transformed_segment_info(transformed_password_id, transformedSegment, tag, s.s_index, s.e_index,
+                save_transformed_segment_info(transformed_cred_id, transformedSegment, tag, s.s_index, s.e_index,
                                               kwargs.get("clearPassword"))
 
             segments_dist[tag][s.word] += 1
@@ -483,14 +483,15 @@ def main(db, transformed_password_id, pwset_id, dryrun, verbose, basepath, tag_t
         patterns_dist[pattern] += 1
 
         if kwargs.get("type") == "username":
-            # save username at transformed_password_id and return
+            # save username at transformed_cred_id and return
             # variable transformedPassword is actually transformed username
             transformedUsername = transformedPassword
-            database.save_transformed_username(transformed_password_id, transformedUsername)
+            database.save_transformed_username(transformed_cred_id, transformedUsername)
             return
 
-        # Save transformed password in the database if transformed_password_id is not None
-        database.save_transformed_password(transformed_password_id, transformedPassword, str(pattern))
+        # Save transformed password in the database if transformed_cred_id is not None
+        if transformed_cred_id is not None:
+            database.save_transformed_password(transformed_cred_id, transformedPassword, str(pattern))
 
         # outputs the classification results for debugging purposes
         if verbose:

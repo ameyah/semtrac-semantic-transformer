@@ -79,26 +79,26 @@ def get_grammar_id(grammar_text):
         return res[0]['grammar_id']
 
 
-def save_transformed_password(transformed_password_id, transformed_password, grammar_text):
+def save_transformed_password(transformed_cred_id, transformed_password, grammar_text):
     # Get grammar_id
     grammar_id = get_grammar_id(grammar_text)
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(query.save_transformed_password(transformed_password_id, utils.escape(transformed_password, toEscape), grammar_id))
+    cursor.execute(query.save_transformed_password(transformed_cred_id, utils.escape(transformed_password, toEscape), grammar_id))
     conn.commit()
 
 
-def save_transformed_username(transformed_password_id, transformed_username):
+def save_transformed_username(transformed_cred_id, transformed_username):
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(query.save_transformed_username(transformed_password_id, utils.escape(transformed_username, toEscape)))
+    cursor.execute(query.save_transformed_username(transformed_cred_id, utils.escape(transformed_username, toEscape)))
     conn.commit()
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info, special_char_info):
+def save_transformed_segment_info(transformed_cred_id, transformed_segment, capitalization_info, special_char_info):
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute(query.save_transformed_segment_info(transformed_password_id, utils.escape(transformed_segment, toEscape), capitalization_info, special_char_info))
+    cursor.execute(query.save_transformed_segment_info(transformed_cred_id, utils.escape(transformed_segment, toEscape), capitalization_info, special_char_info))
     conn.commit()
 
 

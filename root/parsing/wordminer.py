@@ -55,7 +55,7 @@ special_char_mapping = {
     '0': 'o'
 }
 
-SPECIAL_CHAR_MATCH = re.compile(r'[!1~@#3$5\|0]', re.I)
+SPECIAL_CHAR_MATCH = '[!1~@#3$5\|0]'
 
 # database Authentication Parameters
 # USER = ""
@@ -119,9 +119,9 @@ def checkResSubstr(results):
     return list(good)
 
 
-def get_re_replaced_string(re_pattern, match_str, mapping_dict):
-    for m in re_pattern.finditer(match_str):
-        match_str = match_str.replace(m.group(), mapping_dict[m.group()])
+def get_re_replaced_string(match_str, mapping_dict):
+    for m in mapping_dict:
+        match_str = match_str.replace(m, mapping_dict[m])
     return match_str
 
 
@@ -571,14 +571,12 @@ def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
         permutations = permuteString(password.lower())
         words = list()
         for x in permutations:
-            print x[0]
             if x[0] in dictionary:
                 words.append(x)
             else:
                 # check for special mappings
-                if SPECIAL_CHAR_MATCH.match(x[0]) is not None and checkSpecialChars:
-                    replaced_string = get_re_replaced_string(SPECIAL_CHAR_MATCH, x[0], special_char_mapping)
-                    print replaced_string
+                if re.search(SPECIAL_CHAR_MATCH, x[0]) is not None and checkSpecialChars:
+                    replaced_string = get_re_replaced_string(x[0], special_char_mapping)
                     if replaced_string in dictionary:
                         words.append((replaced_string, x[1], x[2]))
 
@@ -737,12 +735,12 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.send_ok_response()
 
                     # First insert the login website in the database
-                    transformed_password_id = get_transformed_password_id(db, participantObj.get_participant_id(),
+                    transformed_cred_id = get_transformed_credentials_id(db, participantObj.get_participant_id(),
                                                                           websiteUrl)
 
                     self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
-                    self.grammarGeneration(transformed_password_id, clearPassword=clearPasswordURIDecoded)
+                    self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
 
                     # Delete original password after transformation
                     self.clearOriginalData()
@@ -751,7 +749,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # as the procedure is same, except that we dont have to store grammar.
                     self.segmentPassword(clearUsernameURIDecoded, False)
                     self.posTagging()
-                    self.grammarGeneration(transformed_password_id, type="username")
+                    self.grammarGeneration(transformed_cred_id, type="username")
 
                     self.clearOriginalData()
 
@@ -798,7 +796,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
             # send code 200 response
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Content-type', 'text-html')
+            self.send_header('Content-type', 'text/plain')
             self.end_headers()
             if kwargs.get("data"):
                 self.wfile.write(kwargs.get("data"))

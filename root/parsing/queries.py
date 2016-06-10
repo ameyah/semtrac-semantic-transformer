@@ -346,12 +346,10 @@ def add_website(db, website_url):
     return website_id
 
 
-def get_transformed_password_id(db, password_set, website_url):
-    """Returns id of transformed_passwords table corresponding to password_set and website_url
-    This function first grabs website_id from website_url and then queries transformed_passwords table
-    for transformed_password ID.
-    Modification: Grab the transformed_password ID for row which doesn't have password_text set
-    satisfying the above conditions. If there is no such row, insert it."""
+def get_transformed_credentials_id(db, password_set, website_url):
+    """Returns id of transformed_credentials table corresponding to password_set and website_url of user_websites table
+    This function first grabs website_id from website_url and then queries user_websites table
+    for user_website_id ID."""
 
     website_id = check_website_exists(db, website_url)
 
@@ -359,23 +357,28 @@ def get_transformed_password_id(db, password_set, website_url):
         # add the website and fetch website_id
         website_id = add_website(db, website_url)
 
-    query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id=? AND website_id=? AND password_text is NULL'''
+    query = '''SELECT user_website_id FROM user_websites WHERE pwset_id=? AND website_id=?'''
     with db.cursor() as cur:
         cur.execute(query, (password_set, website_id,))
         res = cur.fetchall()
         if len(res) > 0:
-            password_id = res[0][0]
-            return password_id
+            user_website_id = res[0][0]
         else:
-            # Create new entry in transformed_passwords
-            query = '''INSERT INTO transformed_passwords SET website_id = ?, pwset_id = ?'''
-            with db.cursor() as cur:
-                cur.execute(query, (website_id, password_set,))
-                query = '''SELECT password_id FROM transformed_passwords WHERE website_id = ? AND pwset_id = ? AND password_text is NULL'''
-                with db.cursor() as cur:
-                    cur.execute(query, (website_id, password_set,))
-                    password_id = cur.fetchall()[0][0]
-                    return password_id
+            # Create new entry in user_websites table
+            query = '''INSERT INTO user_websites SET website_id = ?, pwset_id = ?'''
+            cur.execute(query, (website_id, password_set,))
+            query = '''SELECT user_website_id FROM user_websites WHERE website_id = ? AND pwset_id = ?'''
+            cur.execute(query, (website_id, password_set,))
+            user_website_id = cur.fetchall()[0][0]
+        # Assuming we now have user_website_id
+        # Insert new row in transformed_credentials table and return the transformed_cred_id
+        query = '''INSERT INTO transformed_credentials SET user_website_id = ?'''
+        cur.execute(query, (user_website_id,))
+        query = '''SELECT transformed_cred_id FROM transformed_credentials WHERE user_website_id = ? ORDER BY
+                transformed_cred_id DESC LIMIT 1'''
+        cur.execute(query, (user_website_id,))
+        transformed_cred_id = cur.fetchall()[0][0]
+        return transformed_cred_id
 
 
 def clear_original_data(db):
@@ -392,7 +395,7 @@ def clear_original_data(db):
 
 def insert_website_list(db, participant_id, website_list):
     # Reset website importance probabilities
-    reset_website_probability(db, participant_id)
+    # reset_website_probability(db, participant_id)
     # Remove previous entries of same participant_id
     # query = '''DELETE FROM transformed_passwords WHERE pwset_id = ?'''
     # with db.cursor() as cur:
@@ -416,20 +419,19 @@ def insert_website_list(db, participant_id, website_list):
         website_user_probability = 1 if website['important'] else 0
 
         # First check if entry exists in transformed_passwords table, update it else insert new entry
-        query = '''SELECT password_id FROM transformed_passwords WHERE pwset_id = ? AND website_id = ?'''
+        query = '''SELECT user_website_id FROM user_websites WHERE pwset_id = ? AND website_id = ?'''
         with db.cursor() as cur:
             cur.execute(query, (participant_id, website_id,))
-            password_rows = cur.fetchall()
-            if len(password_rows) > 0:
-                # update info for each result
-                for row in password_rows:
-                    query = '''UPDATE transformed_passwords SET website_probability = ?, password_reset_count = ?, date = ? WHERE password_id = ?'''
-                    cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, row[0],))
+            user_website_row = cur.fetchall()
+            if len(user_website_row) > 0:
+                query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ?, date = ? WHERE user_website_id = ?'''
+                cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, user_website_row[0][0],))
             else:
-                query = '''INSERT INTO transformed_passwords SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
+                query = '''INSERT INTO user_websites SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
                 cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
 
             # calculate new probability and store it
+            """
             query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
             with db.cursor() as cur:
                 cur.execute(query, (website_id,))
@@ -437,6 +439,7 @@ def insert_website_list(db, participant_id, website_list):
                 new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
                 query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
                 cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
+            """
 
     # Now remove the websites present in database, but not in newly received website_list and websites which dont have
     # any password associated with them
@@ -445,7 +448,7 @@ def insert_website_list(db, participant_id, website_list):
         website_id_list_str = "(" + str(new_website_id_list[0]) + ")"
     else:
         website_id_list_str = str(new_website_id_list)
-    query = '''DELETE FROM transformed_passwords WHERE pwset_id = ? and website_id not in {} and password_text is null'''.format(website_id_list_str)
+    query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in (SELECT DISTINCT user_website_id FROM transformed_credentials)'''.format(website_id_list_str)
     with db.cursor() as cur:
         cur.execute(query, (participant_id,))
 
@@ -470,7 +473,10 @@ def get_participant_id(db, one_way_hash):
 def get_transformed_passwords_results(db, one_way_hash):
     participant_id = get_participant_id(db, one_way_hash)
 
-    query = '''SELECT website_id, password_reset_count, username_text, password_text FROM transformed_passwords WHERE pwset_id = ? ORDER BY website_id'''
+    query = '''SELECT user_websites.website_id, user_websites.password_reset_count,
+            transformed_credentials.username_text, transformed_credentials.password_text FROM user_websites INNER
+            JOIN transformed_credentials ON user_websites.user_website_id = transformed_credentials.user_website_id
+            WHERE user_websites.pwset_id = ? ORDER BY user_websites.website_id'''
     with db.cursor() as cur:
         cur.execute(query, (participant_id,))
         res = cur.fetchall()

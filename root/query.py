@@ -119,29 +119,28 @@ def insert_grammar(grammar_text):
     query = "INSERT INTO grammar SET grammar_text = '{}'".format(grammar_text)
     return query
 
-def save_transformed_password(transformed_password_id, transformed_password, grammar_id):
+def save_transformed_password(transformed_cred_id, transformed_password, grammar_id):
     """
-    Description: Returns query to update transformed_passwords table to store the corresponding transformed_password
+    Description: Returns query to update transformed_credentials table to store the corresponding transformed_password
     """
-    query = "UPDATE transformed_passwords SET password_text = '{}', grammar_id = {} WHERE password_id = {}".format \
-        (transformed_password,
-                                                                                                                   grammar_id, transformed_password_id)
+    query = "UPDATE transformed_credentials SET password_text = '{}', password_grammar_id = {} WHERE transformed_cred_id = {}".format \
+        (transformed_password, grammar_id, transformed_cred_id)
     return query
 
 
-def save_transformed_username(transformed_password_id, transformed_username):
+def save_transformed_username(transformed_cred_id, transformed_username):
     """
-    Description: Returns query to update transformed_passwords table to store the corresponding transformed_username
+    Description: Returns query to update transformed_credentials table to store the corresponding transformed_username
     """
-    query = "UPDATE transformed_passwords SET username_text = '{}' WHERE password_id = {}".format(transformed_username,
-                                                                                                                   transformed_password_id)
+    query = "UPDATE transformed_credentials SET username_text = '{}' WHERE transformed_cred_id = {}".format(transformed_username,
+                                                                                                                   transformed_cred_id)
     return query
 
 
-def save_transformed_segment_info(transformed_password_id, transformed_segment, capitalization_info, special_char_info):
+def save_transformed_segment_info(transformed_cred_id, transformed_segment, capitalization_info, special_char_info):
     """
-    Description: Returns query to insert capitalization info for transformed_segment along with transformed_password_id
+    Description: Returns query to insert capitalization info for transformed_segment along with transformed_cred_id
     """
-    query = "INSERT INTO transformed_segments SET transformed_pass_id = {}, segment = '{}', capital = '{}', special = '{}'".format \
-        (transformed_password_id, transformed_segment, capitalization_info, special_char_info)
+    query = "INSERT INTO transformed_segments SET transformed_cred_id = {}, segment = '{}', capital = '{}', special = '{}'".format \
+        (transformed_cred_id, transformed_segment, capitalization_info, special_char_info)
     return query
