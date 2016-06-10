@@ -43,19 +43,23 @@ dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 ENABLE_CHAR_CHUNKS = True
 
 special_char_mapping = {
-    '!': 'i',
-    '1': 'i',
-    '~': 's',
-    '@': 'a',
-    '#': 'h',
-    '3': 'e',
-    '$': 's',
-    '5': 's',
-    '|': 'i',
-    '0': 'o'
+    '!': ['i', 'l'],
+    '1': ['i', 'l'],
+    '~': ['s'],
+    '@': ['a'],
+    '#': ['h'],
+    '3': ['e'],
+    '$': ['s'],
+    '5': ['s'],
+    '|': ['i', 'l'],
+    '0': ['o'],
+    '4': ['a'],
+    '8': ['b'],
+    '7': ['l', 't'],
+    '+': ['t']
 }
 
-SPECIAL_CHAR_MATCH = '[!1~@#3$5\|0]'
+SPECIAL_CHAR_MATCH = '[!1~@#3$5\|0487\+]'
 
 # database Authentication Parameters
 # USER = ""
