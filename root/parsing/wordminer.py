@@ -123,10 +123,15 @@ def checkResSubstr(results):
     return list(good)
 
 
-def get_re_replaced_string(match_str, mapping_dict):
-    for m in mapping_dict:
-        match_str = match_str.replace(m, mapping_dict[m])
-    return match_str
+def get_re_replaced_string_list(match_str, mapping_dict):
+    str_variation_list = []
+    all_mappings_list = generate_all_list_permutations(mapping_dict)
+    for i in range(0, len(all_mappings_list)):
+        for m in all_mappings_list[i]:
+            match_str = match_str.replace(m, all_mappings_list[i][m])
+        str_variation_list.append(match_str)
+
+    return str_variation_list
 
 
 def orderSortSubsList(subslist):
@@ -289,6 +294,8 @@ def getBigramTrigramBasedWinner(db, candidateList, freqInfo, dictionary):
     return bestList
 
 
+# [([[('jo', 0, 2), ('nat', 3, 6), ('honea', 6, 11)]], 10), ([[('john', 0, 4), ('a', 4, 5), ('tho', 5, 8), ('nea', 8, 11)], [('john', 0, 4), ('at', 4, 6), ('honea', 6, 11)]], 11), ([[('johna', 0, 5), ('tho', 5, 8), ('nea', 8, 11)]], 11), ([[('johnathon', 0, 9)]], 9), ([[('oh', 1, 3), ('nat', 3, 6), ('honea', 6, 11)]], 10), ([[('nat', 3, 6), ('honea', 6, 11)]], 8), ([[('nath', 3, 7), ('one', 7, 10)], [('nath', 3, 7), ('nea', 8, 11)]], 7), ([[('nathon', 3, 9)]], 6), ([[('a', 4, 5), ('tho', 5, 8), ('nea', 8, 11)]], 7), ([[('at', 4, 6), ('honea', 6, 11)]], 7), ([[('athon', 4, 9)]], 5), ([[('tho', 5, 8), ('nea', 8, 11)]], 6), ([[('thon', 5, 9)]], 4), ([[('thone', 5, 10)]], 5), ([[('hon', 6, 9)]], 3), ([[('hone', 6, 10)]], 4), ([[('honea', 6, 11)]], 5), ([[('on', 7, 9)]], 2), ([[('one', 7, 10)]], 3), ([[('nea', 8, 11)]], 3)]
+
 def bestCandidate(db, password, candidates, freqInfo, dictionary):
     ''' Receives a list of candidate segmentations and selects the best
         based on the following criteria:
@@ -301,10 +308,12 @@ def bestCandidate(db, password, candidates, freqInfo, dictionary):
         return candidates
 
     temp = list()
-    maxCoverage = 0
+    # maxCoverage = 0
+    max_length_segment_password = 0
 
     # First metric to select best result is coverage -- compile a list of the sets
     # that provide the best word-coverage.
+    """
     for x in candidates:
         if x[1] < maxCoverage:
             # the coverage of this one is shorter than what we already have.
@@ -318,6 +327,20 @@ def bestCandidate(db, password, candidates, freqInfo, dictionary):
             temp = list()
             temp.append(x)
 
+    """
+
+    for x in candidates:
+        if x[2] < max_length_segment_password:
+            # the length of this one is shorter than what we already have.
+            continue
+        elif x[2] == max_length_segment_password:
+            # it's the same max length
+            temp.append(x)
+        elif x[2] > max_length_segment_password:
+            max_length_segment_password = x[2]
+            # doesn't matter how many words we have, replace.
+            temp = list()
+            temp.append(x)
     # Next we overwrite candidates, reformatting the entries (so all wordList are in a consistent format)
     candidates = []
     for t in temp:
@@ -579,15 +602,19 @@ def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
                 words.append(x)
             else:
                 # check for special mappings
-                if re.search(SPECIAL_CHAR_MATCH, x[0]) is not None and checkSpecialChars:
-                    replaced_string = get_re_replaced_string(x[0], special_char_mapping)
-                    if replaced_string in dictionary:
-                        words.append((replaced_string, x[1], x[2]))
+                if re.search(SPECIAL_CHAR_MATCH, x[0]) is not None and checkSpecialChars and len(x[0]) > 1:
+                    if not x[0].isdigit():
+                        replaced_string_list = get_re_replaced_string_list(x[0], special_char_mapping)
+                        for string_index in range(0, len(replaced_string_list)):
+                            if replaced_string_list[string_index] in dictionary:
+                                words.append((replaced_string_list[string_index], x[1], x[2]))
+                                # Not sure whether to stop on encountering a valid word or insert all words
+                                break
 
         candidates = generateCandidates(words, password)
-        # print candidates
+        print candidates
         resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
-        # print resultSet
+        print resultSet
 
         # add the trashy fragments in the database    
         resultSet = processGaps(db, resultSet, password)
@@ -620,6 +647,15 @@ def generateCandidates(wordList, password):
     for x in sortedList:
         try:
             q = setCover([x], possibleTailStrings(x, sublist), len(password), time.time())
+            # calculate maximum segment length and store in q tuple
+            if q:
+                max_len_segment = 0
+                for partition in q[0]:
+                    for segment in partition:
+                        len_segment = int(segment[2] - segment[1])
+                        if max_len_segment < len_segment:
+                            max_len_segment = len_segment
+                q += (max_len_segment,)
             candidates.append(q)
         except AllowedTimeExceededError, e:
             print str(e)
