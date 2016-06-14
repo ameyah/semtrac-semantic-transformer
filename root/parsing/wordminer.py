@@ -612,9 +612,9 @@ def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
                                 break
 
         candidates = generateCandidates(words, password)
-        print candidates
+        # print candidates
         resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
-        print resultSet
+        # print resultSet
 
         # add the trashy fragments in the database    
         resultSet = processGaps(db, resultSet, password)
