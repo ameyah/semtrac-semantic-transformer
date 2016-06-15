@@ -777,6 +777,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # First insert the login website in the database
                     transformed_cred_id = get_transformed_credentials_id(db, participantObj.get_participant_id(),
                                                                           websiteUrl)
+                    participantObj.set_transformed_cred_id(transformed_cred_id)
 
                     self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
@@ -823,6 +824,12 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                         self.send_bad_request_response()
 
                     """
+                elif "/auth" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    auth_status = urlparse.parse_qs(parsed.query)['success'][0]
+                    transformed_cred_id = participantObj.get_transformed_cred_id()
+                    save_auth_status(db, transformed_cred_id, auth_status)
+                    self.send_ok_response()
                 else:
                     self.send_bad_request_response()
             except oursql.Error as e:

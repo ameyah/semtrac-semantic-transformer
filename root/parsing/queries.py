@@ -550,3 +550,9 @@ def reset_website_probability(db, participant_id):
                 # update the probability and number of users in websites table
                 query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
                 cur.execute(query, (new_probability, (websites_info[1] - 1), user_website[0],))
+
+
+def save_auth_status(db, transformed_cred_id, status):
+    query = '''UPDATE transformed_credentials SET auth_status = ? WHERE transformed_cred_id = ?'''
+    with db.cursor() as cur:
+        cur.execute(query, (status, transformed_cred_id,))
