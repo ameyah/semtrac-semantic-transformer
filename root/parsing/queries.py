@@ -385,11 +385,17 @@ def clear_original_data(db):
     query = '''DELETE FROM passwords.passwords'''
     with db.cursor() as cur:
         cur.execute(query)
-    query = '''DELETE FROM sets'''
+        query = '''DELETE FROM sets'''
+        cur.execute(query)
+        query = '''DELETE FROM set_contains'''
+        cur.execute(query)
+
+
+def clear_password_hashes(db):
+    query = '''DELETE FROM temp_password_hashes'''
     with db.cursor() as cur:
         cur.execute(query)
-    query = '''DELETE FROM set_contains'''
-    with db.cursor() as cur:
+        query = '''ALTER TABLE temp_password_hashes AUTO_INCREMENT = 1'''
         cur.execute(query)
 
 
@@ -474,10 +480,11 @@ def get_transformed_passwords_results(db, one_way_hash):
     participant_id = get_participant_id(db, one_way_hash)
 
     query = '''SELECT user_websites.website_id, user_websites.website_probability, user_websites.password_reset_count,
-            transformed_credentials.username_text, transformed_credentials.password_text, grammar.grammar_text
-            FROM user_websites INNER JOIN transformed_credentials ON user_websites.user_website_id =
-            transformed_credentials.user_website_id JOIN grammar ON transformed_credentials.password_grammar_id =
-            grammar.grammar_id WHERE user_websites.pwset_id = ? ORDER BY user_websites.website_id'''
+            transformed_credentials.username_text, transformed_credentials.password_text,
+            transformed_credentials.password_similarity, grammar.grammar_text FROM user_websites INNER JOIN
+            transformed_credentials ON user_websites.user_website_id = transformed_credentials.user_website_id
+            JOIN grammar ON transformed_credentials.password_grammar_id = grammar.grammar_id WHERE
+            user_websites.pwset_id = ? ORDER BY user_websites.website_id'''
     with db.cursor() as cur:
         cur.execute(query, (participant_id,))
         res = cur.fetchall()
@@ -556,3 +563,33 @@ def save_auth_status(db, transformed_cred_id, status):
     query = '''UPDATE transformed_credentials SET auth_status = ? WHERE transformed_cred_id = ?'''
     with db.cursor() as cur:
         cur.execute(query, (status, transformed_cred_id,))
+
+
+def get_password_hash_index(db, password_hash):
+    query = '''SELECT password_hash_id FROM temp_password_hashes WHERE password_hash=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (password_hash,))
+        res = cur.fetchall()
+        if len(res) > 0:
+            hash_index = res[0][0]
+        else:
+            hash_index = None
+    return hash_index
+
+
+def insert_password_hash(db, password_hash):
+    query = '''INSERT INTO temp_password_hashes SET password_hash=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (password_hash,))
+        # Now get the password_hash_id
+        query = '''SELECT password_hash_id FROM temp_password_hashes WHERE password_hash=?'''
+        cur.execute(query, (password_hash,))
+        res = cur.fetchall()
+        hash_index = res[0][0]
+        return hash_index
+
+
+def store_hash_index(db, transformed_cred_id, hash_index):
+    query = '''UPDATE transformed_credentials SET password_similarity=? WHERE transformed_cred_id=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (hash_index, transformed_cred_id,))

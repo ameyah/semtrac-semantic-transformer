@@ -712,6 +712,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 postvars = self.get_post_data(ctype, pdict)
                 # set current active participant
                 if postvars != '':
+                    # Clear password hashes just to make sure we are clear
+                    clear_password_hashes(db)
                     participantObj.set_participant_id(int(postvars['id'][0]))
                     self.send_ok_response()
                 else:
@@ -779,6 +781,14 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                                                                           websiteUrl)
                     participantObj.set_transformed_cred_id(transformed_cred_id)
 
+                    # Calculate password hash, if hash present for the user, update in transformed_credentials
+                    # else insert the hash and update the hash id in transformed_credentials
+                    password_hash = generate_md5_hash(clearPasswordURIDecoded)
+                    hash_index = get_password_hash_index(db, password_hash)
+                    if hash_index is None:
+                        hash_index = insert_password_hash(db, password_hash)
+                    store_hash_index(db, transformed_cred_id, hash_index)
+
                     self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
                     self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
@@ -798,6 +808,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 elif "/participant/results" in self.path:
                     parsed = urlparse.urlparse(self.path)
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
+                    # First clear the password hashes
+                    clear_password_hashes(db)
                     resultDict = get_transformed_passwords_results(db, one_way_hash)
                     self.send_ok_response(data=json.dumps(resultDict))
                 elif "/website/importance" in self.path:

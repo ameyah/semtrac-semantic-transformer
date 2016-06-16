@@ -1,3 +1,6 @@
+import hashlib
+
+
 def escape(text, characters):
     """ Escape the given characters from a string. """
     for character in characters:
@@ -31,6 +34,11 @@ def generate_all_list_permutations(mapping_dict):
                     result_list.append(temp_map)
 
     return result_list
+
+
+def generate_md5_hash(word):
+    """Returns md5 hash of the word"""
+    return hashlib.md5(word).hexdigest()
 
 
 def calculate_new_probability_remove_user(old_probability, old_users, user_probability):
