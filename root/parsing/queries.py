@@ -392,6 +392,7 @@ def clear_original_data(db):
 
 
 def clear_password_hashes(db):
+
     query = '''DELETE FROM temp_password_hashes'''
     with db.cursor() as cur:
         cur.execute(query)
@@ -409,43 +410,49 @@ def insert_website_list(db, participant_id, website_list):
 
     new_website_id_list = ()
     for website in website_list:
-        url = website['url']
-        website_id = check_website_exists(db, url)
+        try:
+            url = website['url']
+            website_id = check_website_exists(db, url)
 
-        if website_id is None:
-            # add the website and fetch website_id
-            website_id = add_website(db, url)
+            if website_id is None:
+                # add the website and fetch website_id
+                website_id = add_website(db, url)
 
-        new_website_id_list += (int(website_id),)
-        # Now, we have website_id
-        # Convert date time string to datetime object
-        # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
-        dateTimeObj = parser.parse(website['date'])
+            new_website_id_list += (int(website_id),)
+            # Now, we have website_id
+            # Convert date time string to datetime object
+            # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
+            try:
+                dateTimeObj = parser.parse(website['date'])
+            except ValueError:
+                dateTimeObj = parser.parse(website['date'].split("(")[0])
 
-        website_user_probability = 1 if website['important'] else 0
+            website_user_probability = 1 if website['important'] else 0
 
-        # First check if entry exists in transformed_passwords table, update it else insert new entry
-        query = '''SELECT user_website_id FROM user_websites WHERE pwset_id = ? AND website_id = ?'''
-        with db.cursor() as cur:
-            cur.execute(query, (participant_id, website_id,))
-            user_website_row = cur.fetchall()
-            if len(user_website_row) > 0:
-                query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ?, date = ? WHERE user_website_id = ?'''
-                cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, user_website_row[0][0],))
-            else:
-                query = '''INSERT INTO user_websites SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
-                cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
-
-            # calculate new probability and store it
-            """
-            query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
+            # First check if entry exists in transformed_passwords table, update it else insert new entry
+            query = '''SELECT user_website_id FROM user_websites WHERE pwset_id = ? AND website_id = ?'''
             with db.cursor() as cur:
-                cur.execute(query, (website_id,))
-                website_info = cur.fetchall()[0]
-                new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
-                query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
-                cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
-            """
+                cur.execute(query, (participant_id, website_id,))
+                user_website_row = cur.fetchall()
+                if len(user_website_row) > 0:
+                    query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ?, date = ? WHERE user_website_id = ?'''
+                    cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, user_website_row[0][0],))
+                else:
+                    query = '''INSERT INTO user_websites SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
+                    cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
+
+                # calculate new probability and store it
+                """
+                query = '''SELECT probability, p_users FROM websites WHERE website_id=?'''
+                with db.cursor() as cur:
+                    cur.execute(query, (website_id,))
+                    website_info = cur.fetchall()[0]
+                    new_probability = calculate_new_probability_add_user(website_info[0], website_info[1], website_user_probability)
+                    query = '''UPDATE websites SET probability=?, p_users=? WHERE website_id=?'''
+                    cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
+                """
+        except:
+            continue
 
     # Now remove the websites present in database, but not in newly received website_list and websites which dont have
     # any password associated with them
@@ -593,3 +600,17 @@ def store_hash_index(db, transformed_cred_id, hash_index):
     query = '''UPDATE transformed_credentials SET password_similarity=? WHERE transformed_cred_id=?'''
     with db.cursor() as cur:
         cur.execute(query, (hash_index, transformed_cred_id,))
+
+
+def make_password_same(db, participant_id, transformed_cred_id, hash_index):
+    query = '''SELECT password_text FROM transformed_credentials INNER JOIN user_websites WHERE
+            transformed_credentials.user_website_id = user_websites.user_website_id AND user_websites.pwset_id=? AND
+            transformed_credentials.password_similarity=? LIMIT 1'''
+    with db.cursor() as cur:
+        cur.execute(query, (participant_id, hash_index,))
+        try:
+            old_password = cur.fetchall()[0][0]
+            query = '''UPDATE transformed_credentials SET password_text=? WHERE transformed_cred_id=?'''
+            cur.execute(query, (old_password, transformed_cred_id,))
+        except IndexError:
+            return None

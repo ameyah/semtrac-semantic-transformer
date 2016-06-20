@@ -785,13 +785,19 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     # else insert the hash and update the hash id in transformed_credentials
                     password_hash = generate_md5_hash(clearPasswordURIDecoded)
                     hash_index = get_password_hash_index(db, password_hash)
+                    new_hash_index_flag = False
                     if hash_index is None:
+                        new_hash_index_flag = True
                         hash_index = insert_password_hash(db, password_hash)
                     store_hash_index(db, transformed_cred_id, hash_index)
 
                     self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
                     self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
+
+                    # Make password same in transformed_credentials if old hash index used
+                    if not new_hash_index_flag:
+                        make_password_same(db, participantObj.get_participant_id(), transformed_cred_id, hash_index)
 
                     # Delete original password after transformation
                     self.clearOriginalData()
