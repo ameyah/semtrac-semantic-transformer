@@ -144,3 +144,19 @@ def save_transformed_segment_info(transformed_cred_id, transformed_segment, capi
     query = "INSERT INTO transformed_segments SET transformed_cred_id = {}, segment = '{}', capital = '{}', special = '{}'".format \
         (transformed_cred_id, transformed_segment, capitalization_info, special_char_info)
     return query
+
+
+def get_password_key(pwset_id):
+    """
+    Description: Returns the password_key corresponding to the pwset_id
+    """
+    query = "SELECT password_key FROM password_set WHERE pwset_id={}".format(pwset_id)
+    return query
+
+
+def insert_password_key(pwset_id, password_key):
+    """
+    Description: Inserts password_key corresponding to pwset_id
+    """
+    query = "UPDATE password_set SET password_key='{}' WHERE pwset_id={}".format(password_key, pwset_id)
+    return query

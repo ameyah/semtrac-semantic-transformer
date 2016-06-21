@@ -392,11 +392,12 @@ def clear_original_data(db):
 
 
 def clear_password_hashes(db):
-
     query = '''DELETE FROM temp_password_hashes'''
     with db.cursor() as cur:
         cur.execute(query)
         query = '''ALTER TABLE temp_password_hashes AUTO_INCREMENT = 1'''
+        cur.execute(query)
+        query = '''UPDATE password_set SET password_key = null'''
         cur.execute(query)
 
 
@@ -452,6 +453,7 @@ def insert_website_list(db, participant_id, website_list):
                     cur.execute(query, (new_probability, (website_info[1] + 1), website_id,))
                 """
         except:
+            print "exception"
             continue
 
     # Now remove the websites present in database, but not in newly received website_list and websites which dont have
@@ -461,8 +463,18 @@ def insert_website_list(db, participant_id, website_list):
         website_id_list_str = "(" + str(new_website_id_list[0]) + ")"
     else:
         website_id_list_str = str(new_website_id_list)
-    query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in (SELECT DISTINCT user_website_id FROM transformed_credentials)'''.format(website_id_list_str)
+    query = '''SELECT DISTINCT user_website_id FROM transformed_credentials'''
     with db.cursor() as cur:
+        cur.execute(query)
+        website_ids = cur.fetchall()
+        not_user_website_ids = ()
+        if len(website_ids) == 1:
+            # to remove the trailing comma
+            not_user_website_ids = "(" + str(website_ids[0]) + ")"
+        else:
+            for id in website_ids:
+                not_user_website_ids += (int(id[0]),)
+        query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in {}'''.format(website_id_list_str, str(not_user_website_ids))
         cur.execute(query, (participant_id,))
 
 

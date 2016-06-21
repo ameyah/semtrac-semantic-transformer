@@ -102,6 +102,21 @@ def save_transformed_segment_info(transformed_cred_id, transformed_segment, capi
     conn.commit()
 
 
+def get_password_key(pwset_id):
+    conn = connection()
+    cursor = conn.cursor()
+    cursor.execute(query.get_password_key(pwset_id))
+    res = cursor.fetchall()
+    if len(res) > 0:
+        password_key = res[0]['password_key']
+        if password_key is None:
+            # generate password key and insert into database
+            password_key = random.randint(1, (2**32-1))
+            cursor.execute(query.insert_password_key(pwset_id, password_key))
+            conn.commit()
+    return password_key
+
+
 class PwdDb():
     """ A few notes:
     
