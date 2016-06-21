@@ -804,9 +804,22 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # Transform usernames semantically. We'll use the same functions for now.
                     # as the procedure is same, except that we dont have to store grammar.
-                    self.segmentPassword(clearUsernameURIDecoded, False)
+                    # First check if username is email, if it is then extract email username and transform only the
+                    # username
+                    email_split_flag = False
+                    if re.match("[^@]+@[^@]+\.[^@]+", clearUsernameURIDecoded):
+                        email_username = clearUsernameURIDecoded.split("@")[0]
+                        email_split_flag = True
+                    else:
+                        email_username = clearUsernameURIDecoded
+                    self.segmentPassword(email_username, False)
                     self.posTagging()
                     self.grammarGeneration(transformed_cred_id, type="username")
+
+                    if email_split_flag:
+                        # Now append the email domain to the transformed Username
+                        email_domain = "@" + clearUsernameURIDecoded.split("@")[1]
+                        append_email_domain(db, transformed_cred_id, email_domain)
 
                     self.clearOriginalData()
 

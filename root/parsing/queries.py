@@ -474,7 +474,15 @@ def insert_website_list(db, participant_id, website_list):
         else:
             for id in website_ids:
                 not_user_website_ids += (int(id[0]),)
-        query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in {}'''.format(website_id_list_str, str(not_user_website_ids))
+        if len(new_website_id_list) == 0:
+            if len(website_ids) == 0:
+                query = '''DELETE FROM user_websites WHERE pwset_id = ?'''
+            else:
+                query = '''DELETE FROM user_websites WHERE pwset_id = ? and user_website_id not in {}'''.format(str(not_user_website_ids))
+        elif len(website_ids) == 0:
+            query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {}'''.format(website_id_list_str)
+        else:
+            query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in {}'''.format(website_id_list_str, str(not_user_website_ids))
         cur.execute(query, (participant_id,))
 
 
@@ -625,3 +633,17 @@ def make_password_same(db, participant_id, transformed_cred_id, hash_index):
             cur.execute(query, (old_password, transformed_cred_id,))
         except IndexError:
             return None
+
+
+def append_email_domain(db, transformed_cred_id, email_domain):
+    query = '''SELECT username_text FROM transformed_credentials WHERE transformed_cred_id=?'''
+    with db.cursor() as cur:
+        cur.execute(query, (transformed_cred_id,))
+        res = cur.fetchall()
+        if len(res) > 0:
+            old_username = res[0][0]
+            if old_username is not None:
+                # append email_domain to old_username
+                new_username = old_username + str(email_domain)
+                query = '''UPDATE transformed_credentials SET username_text = ? WHERE transformed_cred_id=?'''
+                cur.execute(query, (new_username, transformed_cred_id,))
