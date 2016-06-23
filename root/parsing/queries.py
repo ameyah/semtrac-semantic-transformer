@@ -397,7 +397,7 @@ def clear_password_hashes(db):
         cur.execute(query)
         query = '''ALTER TABLE temp_password_hashes AUTO_INCREMENT = 1'''
         cur.execute(query)
-        query = '''UPDATE password_set SET password_key = null'''
+        query = '''UPDATE password_set SET password_key = NULL'''
         cur.execute(query)
 
 
@@ -470,7 +470,7 @@ def insert_website_list(db, participant_id, website_list):
         not_user_website_ids = ()
         if len(website_ids) == 1:
             # to remove the trailing comma
-            not_user_website_ids = "(" + str(website_ids[0]) + ")"
+            not_user_website_ids = "(" + str(int(website_ids[0][0])) + ")"
         else:
             for id in website_ids:
                 not_user_website_ids += (int(id[0]),)
@@ -483,6 +483,7 @@ def insert_website_list(db, participant_id, website_list):
             query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {}'''.format(website_id_list_str)
         else:
             query = '''DELETE FROM user_websites WHERE pwset_id = ? and website_id not in {} and user_website_id not in {}'''.format(website_id_list_str, str(not_user_website_ids))
+        print query
         cur.execute(query, (participant_id,))
 
 

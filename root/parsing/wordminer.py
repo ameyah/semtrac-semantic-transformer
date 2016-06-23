@@ -33,6 +33,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pos_tagger
 import database
 import grammar
+import words_mapping
 
 
 # the ids should be in priority order
@@ -714,6 +715,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 if postvars != '':
                     # Clear password hashes just to make sure we are clear
                     clear_password_hashes(db)
+                    words_mapping.clear_word_mapping()
                     participantObj.set_participant_id(int(postvars['id'][0]))
                     self.send_ok_response()
                 else:
@@ -796,8 +798,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
 
                     # Make password same in transformed_credentials if old hash index used
-                    if not new_hash_index_flag:
-                        make_password_same(db, participantObj.get_participant_id(), transformed_cred_id, hash_index)
+                    # if not new_hash_index_flag:
+                    #     make_password_same(db, participantObj.get_participant_id(), transformed_cred_id, hash_index)
 
                     # Delete original password after transformation
                     self.clearOriginalData()
@@ -829,6 +831,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
                     # First clear the password hashes
                     clear_password_hashes(db)
+                    words_mapping.clear_word_mapping()
                     resultDict = get_transformed_passwords_results(db, one_way_hash)
                     self.send_ok_response(data=json.dumps(resultDict))
                 elif "/website/importance" in self.path:
