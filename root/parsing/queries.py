@@ -391,13 +391,9 @@ def clear_original_data(db):
         cur.execute(query)
 
 
-def clear_password_hashes(db):
-    query = '''DELETE FROM temp_password_hashes'''
+def clear_password_key(db):
+    query = '''UPDATE password_set SET password_key = NULL'''
     with db.cursor() as cur:
-        cur.execute(query)
-        query = '''ALTER TABLE temp_password_hashes AUTO_INCREMENT = 1'''
-        cur.execute(query)
-        query = '''UPDATE password_set SET password_key = NULL'''
         cur.execute(query)
 
 
@@ -590,36 +586,6 @@ def save_auth_status(db, transformed_cred_id, status):
     query = '''UPDATE transformed_credentials SET auth_status = ? WHERE transformed_cred_id = ?'''
     with db.cursor() as cur:
         cur.execute(query, (status, transformed_cred_id,))
-
-
-def get_password_hash_index(db, password_hash):
-    query = '''SELECT password_hash_id FROM temp_password_hashes WHERE password_hash=?'''
-    with db.cursor() as cur:
-        cur.execute(query, (password_hash,))
-        res = cur.fetchall()
-        if len(res) > 0:
-            hash_index = res[0][0]
-        else:
-            hash_index = None
-    return hash_index
-
-
-def insert_password_hash(db, password_hash):
-    query = '''INSERT INTO temp_password_hashes SET password_hash=?'''
-    with db.cursor() as cur:
-        cur.execute(query, (password_hash,))
-        # Now get the password_hash_id
-        query = '''SELECT password_hash_id FROM temp_password_hashes WHERE password_hash=?'''
-        cur.execute(query, (password_hash,))
-        res = cur.fetchall()
-        hash_index = res[0][0]
-        return hash_index
-
-
-def store_hash_index(db, transformed_cred_id, hash_index):
-    query = '''UPDATE transformed_credentials SET password_similarity=? WHERE transformed_cred_id=?'''
-    with db.cursor() as cur:
-        cur.execute(query, (hash_index, transformed_cred_id,))
 
 
 def make_password_same(db, participant_id, transformed_cred_id, hash_index):

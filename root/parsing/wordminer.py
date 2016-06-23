@@ -714,7 +714,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 # set current active participant
                 if postvars != '':
                     # Clear password hashes just to make sure we are clear
-                    clear_password_hashes(db)
+                    clear_password_key(db)
                     words_mapping.clear_word_mapping()
                     participantObj.set_participant_id(int(postvars['id'][0]))
                     self.send_ok_response()
@@ -783,23 +783,9 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                                                                           websiteUrl)
                     participantObj.set_transformed_cred_id(transformed_cred_id)
 
-                    # Calculate password hash, if hash present for the user, update in transformed_credentials
-                    # else insert the hash and update the hash id in transformed_credentials
-                    password_hash = generate_md5_hash(clearPasswordURIDecoded)
-                    hash_index = get_password_hash_index(db, password_hash)
-                    new_hash_index_flag = False
-                    if hash_index is None:
-                        new_hash_index_flag = True
-                        hash_index = insert_password_hash(db, password_hash)
-                    store_hash_index(db, transformed_cred_id, hash_index)
-
                     self.segmentPassword(clearPasswordURIDecoded, True)
                     self.posTagging()
                     self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
-
-                    # Make password same in transformed_credentials if old hash index used
-                    # if not new_hash_index_flag:
-                    #     make_password_same(db, participantObj.get_participant_id(), transformed_cred_id, hash_index)
 
                     # Delete original password after transformation
                     self.clearOriginalData()
@@ -830,7 +816,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     parsed = urlparse.urlparse(self.path)
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
                     # First clear the password hashes
-                    clear_password_hashes(db)
+                    clear_password_key(db)
                     words_mapping.clear_word_mapping()
                     resultDict = get_transformed_passwords_results(db, one_way_hash)
                     self.send_ok_response(data=json.dumps(resultDict))
