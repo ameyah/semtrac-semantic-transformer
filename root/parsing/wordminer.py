@@ -758,7 +758,10 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         # handle GET command
         def do_GET(self):
             try:
-                if "/participant/id" in self.path:
+                if "/online" in self.path:
+                    self.send_ok_response(data=1)
+
+                elif "/participant/id" in self.path:
                     parsed = urlparse.urlparse(self.path)
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
                     participant_id = get_participant_id(db, one_way_hash)
