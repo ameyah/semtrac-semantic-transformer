@@ -695,7 +695,17 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
         # handle POST command
         def do_POST(self):
             print self.path
-            if "/website/save" in self.path:
+            if "/prestudy/answers" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = self.get_post_data(ctype, pdict)
+                if postvars != '':
+                    answers = json.loads(postvars['answers'][0])
+                    result = insert_prestudy_answers(db, participantObj.get_participant_id(), answers)
+                    self.send_ok_response(data=result)
+                else:
+                    self.send_bad_request_response()
+
+            elif "/website/save" in self.path:
                 ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
                 postvars = self.get_post_data(ctype, pdict)
                 if postvars != '':
@@ -754,6 +764,12 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     participant_id = get_participant_id(db, one_way_hash)
                     participantObj.set_participant_id(participant_id)
                     self.send_ok_response(data=participant_id)
+
+                elif "/prestudy/questions" in self.path:
+                    parsed = urlparse.urlparse(self.path)
+                    question_type = urlparse.parse_qs(parsed.query)['type'][0]
+                    questions = get_prestudy_questions(db, question_type)
+                    self.send_ok_response(data=json.dumps(questions))
 
                 elif "/transform" in self.path:
                     # getParams = self.path.split("transform?")[1]
@@ -943,25 +959,25 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    with timer.Timer('n-grams load'):
-        loadNgrams(db)
+    # with timer.Timer('n-grams load'):
+    #     loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    dictionary = getDictionary(db, dictSetIds)
+    # dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
     server_address = ('127.0.0.1', 443)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')

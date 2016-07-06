@@ -4,6 +4,8 @@ import tldextract
 from dictionary_trie import Trie
 from utils import *
 from dateutil import parser
+import unicodedata
+
 
 NUM_DICT_ID    = 200
 MIXED_NUM_SC_DICT_ID = 201
@@ -614,3 +616,34 @@ def append_email_domain(db, transformed_cred_id, email_domain):
                 new_username = old_username + str(email_domain)
                 query = '''UPDATE transformed_credentials SET username_text = ? WHERE transformed_cred_id=?'''
                 cur.execute(query, (new_username, transformed_cred_id,))
+
+
+def get_prestudy_questions(db, questions_type):
+    if questions_type == "CURRENT" or questions_type == "RISK":
+        query = '''SELECT question_id, question FROM pre_study_questions WHERE type=? ORDER BY question_id'''
+        with db.cursor() as cur:
+            cur.execute(query, (questions_type,))
+            questions = cur.fetchall()
+            questions = [{"question_id": int(elem[0]), "question": unicodedata.normalize('NFKD', elem[1]).encode('ascii','ignore')} for elem in questions]
+            # for question in questions:
+            #     question[0] = int(question[0])
+            #     question[1] = unicodedata.normalize('NFKD', question[1]).encode('ascii','ignore')
+            if len(questions) > 0:
+                # formatted_questions = []
+                # for question in questions:
+                #     formatted_questions.append(question[0])
+                return questions
+
+
+def insert_prestudy_answers(db, participant_id, answers):
+    for answer in answers:
+        if 0 <= answer['answer'] < 6:
+            query = '''DELETE FROM pre_study_responses WHERE pwset_id = ? AND question_id = ?'''
+            with db.cursor() as cur:
+                cur.execute(query, (participant_id, answer['question_id']))
+                query = '''INSERT INTO pre_study_responses SET pwset_id = ?, question_id = ?, response = ?'''
+                cur.execute(query, (participant_id, answer['question_id'], answer['answer']))
+        else:
+            return None
+
+    return 1
