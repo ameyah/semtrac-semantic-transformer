@@ -618,30 +618,42 @@ def append_email_domain(db, transformed_cred_id, email_domain):
                 cur.execute(query, (new_username, transformed_cred_id,))
 
 
-def get_prestudy_questions(db, questions_type):
-    if questions_type == "CURRENT" or questions_type == "RISK":
-        query = '''SELECT question_id, question FROM pre_study_questions WHERE type=? ORDER BY question_id'''
+def get_study_questions(db, participant_id, questions_type):
+    if questions_type == "CURRENT" or questions_type == "RISK" or questions_type == "POST":
+        query = '''SELECT question_id, question FROM study_questions WHERE type=? ORDER BY question_id'''
         with db.cursor() as cur:
             cur.execute(query, (questions_type,))
             questions = cur.fetchall()
             questions = [{"question_id": int(elem[0]), "question": unicodedata.normalize('NFKD', elem[1]).encode('ascii','ignore')} for elem in questions]
-            # for question in questions:
-            #     question[0] = int(question[0])
-            #     question[1] = unicodedata.normalize('NFKD', question[1]).encode('ascii','ignore')
             if len(questions) > 0:
-                # formatted_questions = []
-                # for question in questions:
-                #     formatted_questions.append(question[0])
+                if questions_type == "POST":
+                    query = '''SELECT website_id, website_text FROM websites WHERE website_id IN (SELECT DISTINCT
+                    website_id FROM user_websites INNER JOIN transformed_credentials WHERE user_websites.user_website_id =
+                    transformed_credentials.user_website_id AND pwset_id = ?)'''
+                    cur.execute(query, (participant_id,))
+                    websites = cur.fetchall()
+                    if len(websites) > 0:
+                        result_obj = {
+                            "questions": questions,
+                            "websites": []
+                        }
+                        for website in websites:
+                            website_obj = {
+                                "id": website[0],
+                                "text": website[1]
+                            }
+                            result_obj['websites'].append(website_obj)
+                        return result_obj
                 return questions
 
 
 def insert_prestudy_answers(db, participant_id, answers):
     for answer in answers:
         if 0 <= answer['answer'] < 6:
-            query = '''DELETE FROM pre_study_responses WHERE pwset_id = ? AND question_id = ?'''
+            query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ?'''
             with db.cursor() as cur:
                 cur.execute(query, (participant_id, answer['question_id']))
-                query = '''INSERT INTO pre_study_responses SET pwset_id = ?, question_id = ?, response = ?'''
+                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, response = ?'''
                 cur.execute(query, (participant_id, answer['question_id'], answer['answer']))
         else:
             return None

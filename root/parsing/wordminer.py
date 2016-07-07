@@ -768,11 +768,11 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     participantObj.set_participant_id(participant_id)
                     self.send_ok_response(data=participant_id)
 
-                elif "/prestudy/questions" in self.path:
+                elif "/study/questions" in self.path:
                     parsed = urlparse.urlparse(self.path)
                     question_type = urlparse.parse_qs(parsed.query)['type'][0]
-                    questions = get_prestudy_questions(db, question_type)
-                    self.send_ok_response(data=json.dumps(questions))
+                    result = get_study_questions(db, participantObj.get_participant_id(), question_type)
+                    self.send_ok_response(data=json.dumps(result))
 
                 elif "/transform" in self.path:
                     # getParams = self.path.split("transform?")[1]
