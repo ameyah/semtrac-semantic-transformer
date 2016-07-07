@@ -632,18 +632,17 @@ def get_study_questions(db, participant_id, questions_type):
                     transformed_credentials.user_website_id AND pwset_id = ?)'''
                     cur.execute(query, (participant_id,))
                     websites = cur.fetchall()
-                    if len(websites) > 0:
-                        result_obj = {
-                            "questions": questions,
-                            "websites": []
+                    result_obj = {
+                        "questions": questions,
+                        "websites": []
+                    }
+                    for website in websites:
+                        website_obj = {
+                            "id": website[0],
+                            "text": website[1]
                         }
-                        for website in websites:
-                            website_obj = {
-                                "id": website[0],
-                                "text": website[1]
-                            }
-                            result_obj['websites'].append(website_obj)
-                        return result_obj
+                        result_obj['websites'].append(website_obj)
+                    return result_obj
                 return questions
 
 
@@ -652,9 +651,23 @@ def insert_prestudy_answers(db, participant_id, answers):
         if 0 <= answer['answer'] < 6:
             query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ?'''
             with db.cursor() as cur:
-                cur.execute(query, (participant_id, answer['question_id']))
+                cur.execute(query, (participant_id, answer['question_id'],))
                 query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, response = ?'''
-                cur.execute(query, (participant_id, answer['question_id'], answer['answer']))
+                cur.execute(query, (participant_id, answer['question_id'], answer['answer'],))
+        else:
+            return None
+
+    return 1
+
+
+def insert_poststudy_answers(db, participant_id, answers):
+    for answer in answers:
+        if 0 < answer['answer'] < 6:
+            query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ? AND website_id = ?'''
+            with db.cursor() as cur:
+                cur.execute(query, (participant_id, answer['question_id'], answer['website_id'],))
+                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, website_id = ?, response = ?'''
+                cur.execute(query, (participant_id, answer['question_id'], answer['website_id'], answer['answer'],))
         else:
             return None
 

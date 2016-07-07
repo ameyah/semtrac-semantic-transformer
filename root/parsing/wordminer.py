@@ -705,6 +705,16 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 else:
                     self.send_bad_request_response()
 
+            elif "/poststudy/answers" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = self.get_post_data(ctype, pdict)
+                if postvars != '':
+                    answers = json.loads(postvars['answers'][0])
+                    result = insert_poststudy_answers(db, participantObj.get_participant_id(), answers)
+                    self.send_ok_response(data=result)
+                else:
+                    self.send_bad_request_response()
+
             elif "/website/save" in self.path:
                 ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
                 postvars = self.get_post_data(ctype, pdict)
