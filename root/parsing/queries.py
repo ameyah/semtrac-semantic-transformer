@@ -421,10 +421,15 @@ def insert_website_list(db, participant_id, website_list):
             # Now, we have website_id
             # Convert date time string to datetime object
             # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
-            try:
-                dateTimeObj = parser.parse(website['date'])
-            except ValueError:
-                dateTimeObj = parser.parse(website['date'].split("(")[0])
+            null_date_flag = False
+            if str(website['date']) is "":
+                null_date_flag = True
+            else:
+                try:
+                    dateTimeObj = parser.parse(website['date'])
+                except ValueError:
+                    print "date exception"
+                    dateTimeObj = parser.parse(website['date'].split("(")[0])
 
             website_user_probability = 1 if website['important'] else 0
 
@@ -434,8 +439,12 @@ def insert_website_list(db, participant_id, website_list):
                 cur.execute(query, (participant_id, website_id,))
                 user_website_row = cur.fetchall()
                 if len(user_website_row) > 0:
-                    query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ?, date = ? WHERE user_website_id = ?'''
-                    cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, user_website_row[0][0],))
+                    if null_date_flag:
+                        query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ? WHERE user_website_id = ?'''
+                        cur.execute(query, (website_user_probability, website['reset_count'], user_website_row[0][0],))
+                    else:
+                        query = '''UPDATE user_websites SET website_probability = ?, password_reset_count = ?, date = ? WHERE user_website_id = ?'''
+                        cur.execute(query, (website_user_probability, website['reset_count'], dateTimeObj, user_website_row[0][0],))
                 else:
                     query = '''INSERT INTO user_websites SET pwset_id = ?, website_id = ?, website_probability=?, password_reset_count = ?, date = ?'''
                     cur.execute(query, (participant_id, website_id, website_user_probability, website['reset_count'], dateTimeObj,))
@@ -679,11 +688,13 @@ def add_new_website(db, participant_id, website_url, website_importance):
     if website_id is None:
         # add the website and fetch website_id
         website_id = add_website(db, website_url)
-    query = '''SELECT * FROM user_websites WHERE pwset_id = ? AND website_id = ?'''
+    query = '''SELECT user_website_id FROM user_websites WHERE pwset_id = ? AND website_id = ?'''
     with db.cursor() as cur:
         cur.execute(query, (participant_id, website_id,))
         res = cur.fetchall()
         if len(res) > 0:
+            query = '''UPDATE user_websites SET website_probability = ? WHERE user_website_id = ?'''
+            cur.execute(query, (int(website_importance), int(res[0][0]),))
             return 1
     query = '''INSERT INTO user_websites SET pwset_id = ?, website_id = ?, website_probability = ?'''
     with db.cursor() as cur:
