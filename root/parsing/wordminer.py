@@ -37,7 +37,7 @@ import words_mapping
 
 
 # the ids should be in priority order
-# names (20, 30, 40) take precedence over cities (60) and countries (50) 
+# names (20, 30, 40) take precedence over cities (60) and countries (50)
 dict_sets = [10, 20, 30, 40, 60, 50, 80, 90]
 # sys.argv = ['testWordMiner.py', '-d', [10, 60, 50, 20, 30, 40, 80, 90], '-p', '1']
 
@@ -95,7 +95,7 @@ def makeSearchingDict(words):
 
 def permuteString(word):
     '''Takes a string, outputs a list of permutations of lengths in a list.
-    
+
     Used by the miner to get strings it can look up in the hash tree
     (aka, python dict), as a speed improvement.
     '''
@@ -108,7 +108,7 @@ def permuteString(word):
 
 def checkResSubstr(results):
     '''Checks the results for substrings.
-    
+
     This is good for speed, and bad if you actually like correct results.
     '''
     good = set()
@@ -137,7 +137,7 @@ def get_re_replaced_string_list(match_str, mapping_dict):
 
 def orderSortSubsList(subslist):
     '''Expects a list of tuples conforming to (word, s_index, e_index)
-    
+
     Sorts the list according to an order believed to produce the faster running
     of the algorithm.
     Sorts such that to select segments which start with s_index in ascending order first,
@@ -301,7 +301,7 @@ def bestCandidate(db, password, candidates, freqInfo, dictionary):
     ''' Receives a list of candidate segmentations and selects the best
         based on the following criteria:
         1. Coverage
-        2. Recursive n-gram scoring - product of frequencies of n-grams (trigram/bigram/unigram) 
+        2. Recursive n-gram scoring - product of frequencies of n-grams (trigram/bigram/unigram)
         3. Oddest single word - frequency of the least frequent word
     '''
 
@@ -373,9 +373,9 @@ def max_freq(var):
 def setCover(currWord, remWords, passLength, sTime):
     '''Recursive algorithm to calculate the Set Cover for the words found in the password.
     Runs very slow for large numbers of input words.
-    
+
     sTime -- pass the current time. If execution takes more than 60s, raises AllowedTimeExceededError
-    
+
     '''
     ALLOWED_TIME = 60  # in seconds
     if time.time() - sTime > ALLOWED_TIME:
@@ -416,8 +416,8 @@ def setCover(currWord, remWords, passLength, sTime):
 
 def possibleTailStrings(currentWord, subList):
     '''Takes e_index from the current word, and subList of the remaining words.
-    
-    Returns the a list of original tuples that are non-overlapping with the 
+
+    Returns the a list of original tuples that are non-overlapping with the
     e_index of the current word.
     '''
     # debugging
@@ -585,7 +585,7 @@ def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
     # classifies password
     dynDictionaryID = tagChunk(password)
 
-    # if contains only numbers and/or symbols, or contains only one character, 
+    # if contains only numbers and/or symbols, or contains only one character,
     # insert it into the dyn. dictionary and don't try to parse
     if (dynDictionaryID != MIXED_ALL_DICT_ID and dynDictionaryID != CHAR_DICT_ID) \
             or (password.strip(password[0]) == ''):
@@ -617,7 +617,7 @@ def mineLine(db, password, dictionary, freqInfo, checkSpecialChars):
         resultSet = bestCandidate(db, password, candidates, freqInfo, dictionary)
         # print resultSet
 
-        # add the trashy fragments in the database    
+        # add the trashy fragments in the database
         resultSet = processGaps(db, resultSet, password)
 
     return resultSet
@@ -628,9 +628,9 @@ def generateCandidates(wordList, password):
         and returns a list of candidate segmentations plus the corresponding coverage.
         For example:
         password: 'anybodyelse'
-        
+
         wordList: [('any',0,3), ('anybody',0,7), ('body', 3, 7), ('else', 7, 11)]
-        
+
         returns: [  ([[('any',0,3),('body', 3, 7),('else', 7, 11)]], 11),
                     ([[('anybody',0,6),('else', 7, 11)]], 11),
                     ([[('body', 3, 7),('else', 7, 11)]], 8)... ]
@@ -741,6 +741,16 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 else:
                     self.send_bad_request_response()
 
+            elif "/participant/website/add" in self.path:
+                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+                postvars = self.get_post_data(ctype, pdict)
+                if postvars != '':
+                    website_url = str(postvars['url'][0])
+                    website_importance = int(postvars['importance'][0])
+                    result = add_new_website(db, participantObj.get_participant_id(), website_url, website_importance)
+                    self.send_ok_response(data=result)
+                else:
+                    self.send_bad_request_response()
 
             elif "/participant/website" in self.path:
                 ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
@@ -809,7 +819,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # First insert the login website in the database
                     transformed_cred_id = get_transformed_credentials_id(db, participantObj.get_participant_id(),
-                                                                          websiteUrl)
+                                                                         websiteUrl)
                     participantObj.set_transformed_cred_id(transformed_cred_id)
 
                     self.segmentPassword(clearPasswordURIDecoded, True)
@@ -945,7 +955,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                 grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
                              options.dryrun,
                              options.verbose,
-                             "../grammar3", options.tags, type=kwargs.get("type"), clearPassword=kwargs.get("clearPassword"))
+                             "../grammar3", options.tags, type=kwargs.get("type"),
+                             clearPassword=kwargs.get("clearPassword"))
             except KeyboardInterrupt:
                 db.finish()
                 raise
@@ -972,25 +983,25 @@ def sqlMine(dictSetIds):
     freqInfo = freqReadCache(db)
 
     print "loading n-grams..."
-    with timer.Timer('n-grams load'):
-        loadNgrams(db)
+    # with timer.Timer('n-grams load'):
+    # loadNgrams(db)
 
     if options.erase:
         print 'resetting dynamic dictionaries...'
         resetDynamicDictionary(db)
 
     print "reading dictionary..."
-    dictionary = getDictionary(db, dictSetIds)
+    # dictionary = getDictionary(db, dictSetIds)
 
     print "Loading POS Tagger"
     with timer.Timer("Backoff tagger load"):
         picklePath = "../pickles/brown_clawstags.pickle"
         COCATaggerPath = "../../files/coca_500k.csv"
 
-        pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
+        # pos_tagger_data = pos_tagger.BackoffTagger(picklePath, COCATaggerPath)
 
     server_address = ('127.0.0.1', 443)
-    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data)
+    HTTPHandlerClass = HTTPRequestHandlerContainer(freqInfo, None, None)
     httpd = HTTPServer(server_address, HTTPHandlerClass)
     httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
     print('https server is running...')
