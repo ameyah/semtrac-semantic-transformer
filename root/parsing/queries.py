@@ -657,7 +657,7 @@ def get_study_questions(db, participant_id, questions_type):
 
 def insert_prestudy_answers(db, participant_id, answers):
     for answer in answers:
-        if 0 <= answer['answer'] < 6:
+        if 0 < answer['answer'] < 6:
             query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ?'''
             with db.cursor() as cur:
                 cur.execute(query, (participant_id, answer['question_id'],))
