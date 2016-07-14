@@ -803,6 +803,15 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                     except KeyError:
                         # Username not captured
                         clearUsername = ""
+                    try:
+                        passwordStrength = urlparse.parse_qs(parsed.query)['strength'][0]
+                    except KeyError:
+                        passwordStrength = 0
+                    try:
+                        passwordWarning = urlparse.parse_qs(parsed.query)['warning'][0]
+                    except KeyError:
+                        passwordWarning = ""
+
                     # For websiteUrl, first check whether participantObj has an active url
                     activeWebsite = participantObj.get_active_website()
                     if activeWebsite != '':
@@ -819,7 +828,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
                     # First insert the login website in the database
                     transformed_cred_id = get_transformed_credentials_id(db, participantObj.get_participant_id(),
-                                                                         websiteUrl)
+                                                                         websiteUrl, passwordStrength, passwordWarning)
                     participantObj.set_transformed_cred_id(transformed_cred_id)
 
                     self.segmentPassword(clearPasswordURIDecoded, True)

@@ -348,7 +348,7 @@ def add_website(db, website_url):
     return website_id
 
 
-def get_transformed_credentials_id(db, password_set, website_url):
+def get_transformed_credentials_id(db, password_set, website_url, password_strength, password_warning):
     """Returns id of transformed_credentials table corresponding to password_set and website_url of user_websites table
     This function first grabs website_id from website_url and then queries user_websites table
     for user_website_id ID."""
@@ -374,8 +374,8 @@ def get_transformed_credentials_id(db, password_set, website_url):
             user_website_id = cur.fetchall()[0][0]
         # Assuming we now have user_website_id
         # Insert new row in transformed_credentials table and return the transformed_cred_id
-        query = '''INSERT INTO transformed_credentials SET user_website_id = ?'''
-        cur.execute(query, (user_website_id,))
+        query = '''INSERT INTO transformed_credentials SET user_website_id = ?, password_strength = ?, password_warning = ?'''
+        cur.execute(query, (user_website_id, float(password_strength), escape(password_warning, toEscape),))
         query = '''SELECT transformed_cred_id FROM transformed_credentials WHERE user_website_id = ? ORDER BY
                 transformed_cred_id DESC LIMIT 1'''
         cur.execute(query, (user_website_id,))
