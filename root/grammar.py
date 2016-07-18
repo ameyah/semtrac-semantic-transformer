@@ -384,13 +384,14 @@ def save_transformed_segment_info(transformed_cred_id, transformed_segment, segm
                 special_char_info[1] = "1"
         return "".join(special_char_info)
 
-    capitalization_info = handle_capitalization(clear_password_segment)
     # for generating special character info, first check whether the segment is a valid word
     # remove any digits from segment_tag
     segment_tag_no_digits = ''.join([i for i in segment_tag if not i.isdigit()])
-    if segment_tag_no_digits not in ["special", "char", "number"]:
+    if segment_tag_no_digits not in ["special", "number"]:
+        capitalization_info = handle_capitalization(clear_password_segment)
         special_char_info = handle_special_char_mapping(clear_password_segment)
     else:
+        capitalization_info = "000"
         special_char_info = "000"
     database.save_transformed_segment_info(transformed_cred_id, transformed_segment, capitalization_info,
                                            special_char_info)

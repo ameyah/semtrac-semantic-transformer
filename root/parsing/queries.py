@@ -661,7 +661,7 @@ def insert_prestudy_answers(db, participant_id, answers):
             query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ?'''
             with db.cursor() as cur:
                 cur.execute(query, (participant_id, answer['question_id'],))
-                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, response = ?'''
+                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, response_obj = ?'''
                 cur.execute(query, (participant_id, answer['question_id'], answer['answer'],))
         else:
             return None
@@ -675,7 +675,7 @@ def insert_poststudy_answers(db, participant_id, answers):
             query = '''DELETE FROM study_responses WHERE pwset_id = ? AND question_id = ? AND website_id = ?'''
             with db.cursor() as cur:
                 cur.execute(query, (participant_id, answer['question_id'], answer['website_id'],))
-                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, website_id = ?, response = ?'''
+                query = '''INSERT INTO study_responses SET pwset_id = ?, question_id = ?, website_id = ?, response_obj = ?'''
                 cur.execute(query, (participant_id, answer['question_id'], answer['website_id'], answer['answer'],))
         else:
             return None
