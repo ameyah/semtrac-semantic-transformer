@@ -7,6 +7,7 @@ class Participant():
         self.active_website = ''
         self.previous_active_website = ''
         self.transformed_cred_id = 0
+        self.previous_username = ''
 
     def get_participant_id(self):
         return self.participant_id
@@ -16,6 +17,9 @@ class Participant():
 
     def get_previous_active_website(self):
         return self.previous_active_website
+
+    def get_previous_username(self):
+        return self.previous_username
 
     def get_transformed_cred_id(self):
         return self.transformed_cred_id
@@ -28,6 +32,9 @@ class Participant():
 
     def set_transformed_cred_id(self, id):
         self.transformed_cred_id = id
+
+    def set_active_username(self, username):
+        self.previous_username = username
 
     def reset_active_website(self):
         self.previous_active_website = self.active_website

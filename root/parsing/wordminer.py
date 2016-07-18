@@ -802,7 +802,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                         clearUsername = urlparse.parse_qs(parsed.query)['user'][0]
                     except KeyError:
                         # Username not captured
-                        clearUsername = ""
+                        # use previous username
+                        clearUsername = participantObj.get_previous_username()
                     try:
                         passwordStrength = urlparse.parse_qs(parsed.query)['strength'][0]
                     except KeyError:
@@ -857,6 +858,8 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
                         email_domain = "@" + clearUsernameURIDecoded.split("@")[1]
                         append_email_domain(db, transformed_cred_id, email_domain)
 
+                    # store clearUsername in participantObj
+                    participantObj.set_active_username(clearUsernameURIDecoded)
                     self.clearOriginalData()
 
                     participantObj.reset_active_website()
