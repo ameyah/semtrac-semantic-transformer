@@ -31,7 +31,7 @@ import hashlib
 # Import POS Tagger and Grammar Generator
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pos_tagger
-import database
+import db_conn
 import grammar
 import words_mapping
 
@@ -951,7 +951,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
         def posTagging(self):
             try:
-                self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample,
+                self.passwordSegmentsDb = db_conn.PwdDb(participantObj.get_participant_id(), sample=options.sample,
                                                          save_cachesize=500000)
                 pos_tagger.main(self.passwordSegmentsDb, pos_tagger_data, options.dryrun, options.stats,
                                 options.verbose)
@@ -962,7 +962,7 @@ def HTTPRequestHandlerContainer(freqInfo, dictionary, pos_tagger_data):
 
         def grammarGeneration(self, transformed_password_id, **kwargs):
             # grammar.select_treecut(options.password_set, 5000)
-            self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample)
+            self.passwordSegmentsDb = db_conn.PwdDb(participantObj.get_participant_id(), sample=options.sample)
             try:
                 grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
                              options.dryrun,

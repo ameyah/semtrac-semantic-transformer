@@ -1,11 +1,13 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
 from controllers import Controllers
+import cgi
+import urlparse
+import include.util as utils
 
 __author__ = 'Ameya'
 
 
-def HTTPRequestHandlerContainer(cache_obj):
-    global db, options, participantObj
+def HTTPRequestHandlerContainer(db):
 
     class HTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -103,10 +105,8 @@ def HTTPRequestHandlerContainer(cache_obj):
                     self.send_ok_response(data=1)
 
                 elif "/participant/id" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
-                    self.controller.new_participant_record(one_way_hash)
-
+                    one_way_hash = utils.get_get_param(self.path, 'hash')
+                    participant_id = self.controller.new_participant_record(db, one_way_hash)
                     self.send_ok_response(data=participant_id)
 
                 elif "/study/questions" in self.path:

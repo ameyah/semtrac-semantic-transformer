@@ -1,4 +1,4 @@
-
+import urlparse
 import os
 
 
@@ -22,3 +22,8 @@ def abspath(root_path, filename):
     """
     dir = os.path.dirname(root_path)
     return os.path.join(dir, filename)
+
+
+def get_get_param(path, key):
+    parsed = urlparse.urlparse(path)
+    return urlparse.parse_qs(parsed.query)[key][0]

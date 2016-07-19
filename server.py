@@ -1,8 +1,7 @@
 import os
 from BaseHTTPServer import HTTPServer
 import ssl
-import include.database as database
-import include.cache_data as cache_data
+import include.db_conn as db_conn
 import include.timer as timer
 from request_handler import HTTPRequestHandlerContainer
 
@@ -10,36 +9,60 @@ __author__ = 'Ameya'
 
 
 class SemtracServer():
+    class __SemtracServer():
+        def __init__(self):
+            self.cache = None
+            self.db = None
+
+        def get_db_cursor(self):
+            if self.db is None:
+                self.db = db_conn.Database(os.path.abspath(__file__))
+            return self.db.get_cursor()
+
+        def pre_tasks(self):
+            if self.db is None:
+                self.db = db_conn.Database(os.path.abspath(__file__))
+            # Cache frequency information
+            print "caching frequency information"
+            import include.cache_data as cache_data
+            self.cache = cache_data.Cache(self.db)
+            self.cache.cache_frequency_information()
+
+            print "loading n-grams..."
+            with timer.Timer('n-grams load'):
+                self.cache.cache_n_grams()
+
+            print "reading dictionary..."
+            self.cache.cache_dictionary()
+
+            print "Loading POS Tagger"
+            with timer.Timer("Backoff tagger load"):
+                pickle_path = "tagging_data/brown_clawstags.pickle"
+                coca_tagger_path = "tagging_data/coca_500k.csv"
+                self.cache.load_pos_tagger(pickle_path, coca_tagger_path)
+
+        def start_server(self):
+            server_address = ('127.0.0.1', 443)
+            HTTPHandlerClass = HTTPRequestHandlerContainer(self.db)
+            httpd = HTTPServer(server_address, HTTPHandlerClass)
+            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
+            print('https server is running...')
+            httpd.serve_forever()
+
+    __instance = None
+
     def __init__(self):
-        self.cache = None
+        if SemtracServer.__instance is None:
+            SemtracServer.__instance = SemtracServer.__SemtracServer()
+        self.__dict__['SemtracServer__instance'] = SemtracServer.__instance
 
-    def pre_tasks(self):
-        db = database.Database(os.path.abspath(__file__))
-        # Cache frequency information
-        print "caching frequency information"
-        self.cache = cache_data.Cache(db)
-        self.cache.cache_frequency_information()
+    def __getattr__(self, attr):
+        """ Delegate access to implementation """
+        return getattr(self.__instance, attr)
 
-        print "loading n-grams..."
-        # with timer.Timer('n-grams load'):
-        #     cache.cache_n_grams()
-
-        print "reading dictionary..."
-        self.cache.cache_dictionary()
-
-        print "Loading POS Tagger"
-        with timer.Timer("Backoff tagger load"):
-            pickle_path = "tagging_data/brown_clawstags.pickle"
-            coca_tagger_path = "tagging_data/coca_500k.csv"
-            self.cache.load_pos_tagger(pickle_path, coca_tagger_path)
-
-    def start_server(self):
-        server_address = ('127.0.0.1', 443)
-        HTTPHandlerClass = HTTPRequestHandlerContainer(self.cache)
-        httpd = HTTPServer(server_address, HTTPHandlerClass)
-        httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
-        print('https server is running...')
-        httpd.serve_forever()
+    def __setattr__(self, attr, value):
+        """ Delegate access to implementation """
+        return setattr(self.__instance, attr, value)
 
 if __name__ == '__main__':
     server = SemtracServer()
