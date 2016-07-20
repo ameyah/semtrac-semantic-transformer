@@ -9,6 +9,9 @@ class Cache():
     class __Cache():
 
         def __init__(self, db):
+            if db is None:
+                server = SemtracServer()
+                db = server.get_db_conn()
             self.db_conn = db
             self.db_cursor = db.get_cursor()
 
@@ -66,9 +69,21 @@ class Cache():
         def load_pos_tagger(self, pickle_path, coca_tagger_path):
             self.pos_tagger_data = pos_tagger.BackoffTagger(pickle_path, coca_tagger_path)
 
+        def get_dictionary(self):
+            return self.dictionary
+
+        def check_in_dictionary(self, word):
+            return True if word in self.dictionary else False
+
+        def get_n_gram_freq(self, word):
+            return 0 if word not in self.ngrams else self.ngrams[word]
+
+        def get_freq_info(self):
+            return self.freq_info
+
     __instance = None
 
-    def __init__(self, db):
+    def __init__(self, db=None):
         if Cache.__instance is None:
             Cache.__instance = Cache.__Cache(db)
         self.__dict__['Cache__instance'] = Cache.__instance
@@ -86,7 +101,7 @@ class TempClearTextWriteBuffer(object):
     """A buffering class for sql writes, to speed everything up nicely. Stores the clear text credentials and its
     associated information temporarily"""
 
-    def __init__(self, dictionary, flushCount=10000):
+    def __init__(self, flushCount=10000):
         server = SemtracServer()
         cursor = server.get_db_cursor()
         self._db = cursor
@@ -96,7 +111,9 @@ class TempClearTextWriteBuffer(object):
             raise ValueError('flush count has to be greater than 0')
         self._data = list()
         self._count = 0
-        self._dictionary = dictionary
+        # Get dictionary from cache
+        cache = Cache()
+        self._dictionary = cache.get_dictionary()
 
         self._last_id = cache_queries.get_last_id_sets()
         if self._last_id is None:

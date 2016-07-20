@@ -8,6 +8,13 @@ server = SemtracServer()
 cursor = server.get_db_cursor()
 
 
+def get_last_insert_id():
+    query = '''SELECT LAST_INSERT_ID() as last_id'''
+    cursor.execute(query)
+    pwid = cursor.fetchone()['last_id']
+    return pwid
+
+
 def get_names_dictionary():
     query = "SELECT dict_text FROM dictionary WHERE dictset_id = 20 OR dictset_id = 30;"
     cursor.execute(query)

@@ -1,6 +1,7 @@
 import urllib
 import urlparse
 import os
+import re
 from tldextract import tldextract
 
 
@@ -28,6 +29,26 @@ def abspath(root_path, filename):
 
 def url_decode(text):
     return urllib.unquote(urllib.unquote(text))
+
+
+def is_int(s):
+    reg_isint = re.compile("^[\d]+$")
+    return bool(reg_isint.match(s))
+
+
+def is_num_sc_chunk(s):
+    reg_is_num_sc_chunk = re.compile("^[\W0-9_]+$")
+    return bool(reg_is_num_sc_chunk.match(s))
+
+
+def is_sc_chunk(s):
+    reg_is_sc_chunk = re.compile("^[\W_]+$")
+    return bool(reg_is_sc_chunk.match(s))
+
+
+def is_char_chunk(s):
+    reg_is_char_chunk = re.compile("^[a-zA-Z]+$")
+    return bool(reg_is_char_chunk.match(s))
 
 
 def escape(text, characters=None):

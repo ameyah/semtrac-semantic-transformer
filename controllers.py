@@ -2,7 +2,7 @@ import unicodedata
 import include.participant as participant
 import database.get_queries as get_queries
 import include.util as utils
-import segmentation.wordminer as wordminer
+import transformation.segmentation as segmentation
 
 __author__ = 'Ameya'
 
@@ -58,7 +58,7 @@ class Controllers():
                                                                          website_info_dict['password_warning'])
         self.participantObj.set_transformed_cred_id(transformed_cred_id)
 
-        self.segmentPassword(clear_password_uri_decoded, True)
+        segmentation.segment_password(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
         self.posTagging()
         self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
 
