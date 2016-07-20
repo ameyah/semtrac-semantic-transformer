@@ -51,6 +51,10 @@ def is_char_chunk(s):
     return bool(reg_is_char_chunk.match(s))
 
 
+def get_maximum_list_length(dictionary):
+    return len(dictionary[sorted(dictionary, key=lambda x: len(dictionary[x]), reverse=True)[0]])
+
+
 def escape(text, characters=None):
     """ Escape the given characters from a string. """
     if characters is None:

@@ -67,7 +67,7 @@ def generate_all_list_permutations(mapping_dict):
     Mappings can be used to replace key with values
     Returns list of all possible mappings"""
     result_list = []
-    max_list_length = get_maximum_list_length(mapping_dict)
+    max_list_length = utils.get_maximum_list_length(mapping_dict)
     for i in mapping_dict:  # for each element in mapping_dict
         for j in range(0, len(mapping_dict[i])):  # for each element of list inside element of dict
             for n in range(0, max_list_length):  # to map j with each possible list element of other dict elements
