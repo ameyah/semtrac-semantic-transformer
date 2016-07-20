@@ -14,6 +14,11 @@ class SemtracServer():
             self.cache = None
             self.db = None
 
+        def get_db_conn(self):
+            if self.db is None:
+                self.db = db_conn.Database(os.path.abspath(__file__))
+            return self.db
+
         def get_db_cursor(self):
             if self.db is None:
                 self.db = db_conn.Database(os.path.abspath(__file__))
@@ -43,7 +48,7 @@ class SemtracServer():
 
         def start_server(self):
             server_address = ('127.0.0.1', 443)
-            HTTPHandlerClass = HTTPRequestHandlerContainer(self.db)
+            HTTPHandlerClass = HTTPRequestHandlerContainer()
             httpd = HTTPServer(server_address, HTTPHandlerClass)
             httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
             print('https server is running...')

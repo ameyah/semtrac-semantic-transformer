@@ -1,4 +1,5 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
+import json
 from controllers import Controllers
 import cgi
 import urlparse
@@ -7,7 +8,7 @@ import include.util as utils
 __author__ = 'Ameya'
 
 
-def HTTPRequestHandlerContainer(db):
+def HTTPRequestHandlerContainer():
 
     class HTTPRequestHandler(BaseHTTPRequestHandler):
 
@@ -106,33 +107,36 @@ def HTTPRequestHandlerContainer(db):
 
                 elif "/participant/id" in self.path:
                     one_way_hash = utils.get_get_param(self.path, 'hash')
-                    participant_id = self.controller.new_participant_record(db, one_way_hash)
+                    participant_id = self.controller.new_participant_record(one_way_hash)
                     self.send_ok_response(data=participant_id)
 
                 elif "/study/questions" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    question_type = urlparse.parse_qs(parsed.query)['type'][0]
-                    result = get_study_questions(db, participantObj.get_participant_id(), question_type)
+                    question_type = utils.get_get_param(self.path, 'type')
+                    result = self.controller.get_study_questions(question_type)
                     self.send_ok_response(data=json.dumps(result))
 
                 elif "/transform" in self.path:
-                    # getParams = self.path.split("transform?")[1]
-                    parsed = urlparse.urlparse(self.path)
-                    clearPassword = urlparse.parse_qs(parsed.query)['pass'][0]
+                    clear_password = utils.get_get_param(self.path, 'pass')
                     try:
-                        clearUsername = urlparse.parse_qs(parsed.query)['user'][0]
+                        clear_username = utils.get_get_param(self.path, 'user')
                     except KeyError:
-                        # Username not captured
-                        # use previous username
-                        clearUsername = participantObj.get_previous_username()
+                        clear_username = None
                     try:
-                        passwordStrength = urlparse.parse_qs(parsed.query)['strength'][0]
+                        password_strength = utils.get_get_param(self.path, 'strength')
                     except KeyError:
-                        passwordStrength = 0
+                        password_strength = 0
                     try:
-                        passwordWarning = urlparse.parse_qs(parsed.query)['warning'][0]
+                        password_warning = utils.get_get_param(self.path, 'warning')
                     except KeyError:
-                        passwordWarning = ""
+                        password_warning = ""
+                    active_url = utils.get_get_param(self.path, 'url')
+                    website_info_dict = {
+                        'clear_password': clear_password,
+                        'clear_username': clear_username,
+                        'password_strength': password_strength,
+                        'password_warning': password_warning,
+                        'active_url': active_url
+                    }
 
                     # For websiteUrl, first check whether participantObj has an active url
                     activeWebsite = participantObj.get_active_website()
