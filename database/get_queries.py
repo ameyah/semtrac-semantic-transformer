@@ -1,3 +1,4 @@
+import random
 from tldextract import tldextract
 from server import SemtracServer
 import post_queries
@@ -125,3 +126,14 @@ def get_transformed_credentials_id(password_set, website_url, password_strength,
     return transformed_cred_id
 
 
+def get_password_key(pwset_id):
+    query = "SELECT password_key FROM password_set WHERE pwset_id={}".format(pwset_id)
+    cursor.execute(query.get_password_key(pwset_id))
+    res = cursor.fetchall()
+    if len(res) > 0:
+        password_key = res[0]['password_key']
+        if password_key is None:
+            # generate password key and insert into database
+            password_key = random.randint(1, (2**32-1))
+            post_queries.insert_password_key(pwset_id, password_key)
+    return password_key

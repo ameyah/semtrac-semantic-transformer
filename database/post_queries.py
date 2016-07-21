@@ -49,3 +49,8 @@ def add_to_dynamic_dictionary(dyn_dict_id, segment):
     as tmp where not exists (select dictset_id, dict_text from dictionary where
     dictset_id = ''' + str(dyn_dict_id) + ''' and dict_text = "''' + str(segment) + '''");'''
     execute_commit_query(query)
+
+
+def insert_password_key(pwset_id, password_key):
+    query = "UPDATE password_set SET password_key='{}' WHERE pwset_id={}".format(password_key, pwset_id)
+    execute_commit_query(query)
