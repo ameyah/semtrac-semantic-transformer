@@ -43,7 +43,7 @@ def get_dictionary_for_dictset(dictset_id):
 
 
 def get_last_id_sets():
-    query = '''SELECT max(set_id) as max_set_id FROM sets;'''
+    query = '''SELECT max(set_id) AS max_set_id FROM sets;'''
     cursor.execute(query)
     res = cursor.fetchone()['max_set_id']
     return res
@@ -78,3 +78,58 @@ def insert_many_set_contains(data):
     db.commit()
 
 
+def get_sets_count_for_participant(pwset_id):
+    """ Retrieves the number of sets (segmentations) associated with a certain group
+    of passwords.
+
+    pwset_id - the id of the target group of passwords
+    """
+
+    query = "SELECT COUNT(*) AS count FROM sets LEFT JOIN passwords ON sets.pass_id = passwords.pass_id " \
+            "WHERE passwords.pwset_id = {}".format(pwset_id)
+    cursor.execute(query)
+    count = cursor.fetchone()['count']
+    return count
+
+
+def get_word_segments(pwset_id, size):
+    """ Returns all the segments.
+
+    pwset_id - the id of the password set to be gathered
+    """
+
+    query = "SELECT sets.set_id AS set_id, " \
+            "set_contains.id AS set_contains_id, dict_text, dictset_id, " \
+            "pos, sentiment, synset, category, dictset_id, pass_text, s_index, e_index " \
+            "FROM passwords " \
+            "JOIN sets ON sets.pass_id = passwords.pass_id " \
+            "JOIN set_contains ON set_contains.set_id = sets.set_id " \
+            "JOIN dictionary ON set_contains.dict_id = dictionary.dict_id " \
+            "WHERE passwords.pwset_id = {} ".format(pwset_id)
+    cursor.execute(query)
+    segments = cursor.fetchmany(size)
+    return segments
+
+
+def extent_segments_parsed(pwset_id):
+    """ Returns the SQL string to query the minimum and maximum pass_id (that have been parsed)
+        from a group of passwords (determined by pwset_id). If no passwords have been parsed
+        from the group, this query will return empty.
+    """
+    query = "SELECT MAX(pass_id) as max, MIN(pass_id) as min FROM sets LEFT JOIN passwords on sets.pass_id = passwords.pass_id " \
+            "WHERE passwords.pwset_id = {}".format(pwset_id)
+    cursor.execute(query)
+    res = cursor.fetchone()
+    return (res['max'], res['min'])
+
+
+def update_set_contains(savebuffer):
+    query = "UPDATE set_contains set pos=%s, sentiment=%s, synset=%s where id=%s;"
+    cursor.executemany(query, savebuffer)
+    db.commit()
+
+
+def update_set_category(set_id, category):
+    query = "UPDATE set_contains set category='{}' where id={}".format(category, set_id)
+    cursor.execute(query)
+    db.commit()

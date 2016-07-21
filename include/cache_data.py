@@ -81,6 +81,9 @@ class Cache():
         def get_freq_info(self):
             return self.freq_info
 
+        def pos_tag_words(self, words):
+            return self.pos_tagger_data.tag(words)
+
     __instance = None
 
     def __init__(self, db=None):
@@ -102,9 +105,6 @@ class TempClearTextWriteBuffer(object):
     associated information temporarily"""
 
     def __init__(self, flushCount=10000):
-        server = SemtracServer()
-        cursor = server.get_db_cursor()
-        self._db = cursor
         if flushCount > 0:
             self._flushCount = flushCount
         else:
@@ -150,7 +150,7 @@ class TempClearTextWriteBuffer(object):
     def _genStage2(self, startingID):
         """ Generates the package of data for stage2 commit into db."""
         # -- refresh dictionary (for dynamic entries)
-        #        self._dictionary = reloadDynamicDictionary( self._db, self._dictionary)
+        # self._dictionary = reloadDynamicDictionary( self._db, self._dictionary)
         stage2 = []
 
         currID = startingID
@@ -186,3 +186,127 @@ class TempClearTextWriteBuffer(object):
             self._flush()
             return True
         return False
+
+
+class TempWordBuffer():
+    """ A few notes:
+
+    - Caching is implemented for saving and reading.
+    - The sample param in the constructor is important when planning to fetch only
+      a sample. The MySQLDb docs mention: "you MUST retrieve the entire result set and
+      close() the cursor before additional queries can be peformed on
+      the connection."
+      If you don't retrieve the entire result set before calling finish(), it will take
+      forever to close the connection.
+
+    """
+
+    def __init__(self, pwset_id, save_cachesize=100000):
+
+        self.savebuffer_size = save_cachesize
+        self.readbuffer_size = 100000
+        self.pwset_id = pwset_id
+
+        self.readbuffer = []
+        self.row = None  # holds the next row to be retrieved by nextPwd(),
+        self.readpointer = -1  # always points to the last row read from readbuffer by fetchone.
+
+        self.savebuffer = []
+
+        # different connections for reading and saving
+        self._init_read_cursor()
+
+    def _init_read_cursor(self):
+        # getting number of 'sets' (or segments)
+        self.sets_size = cache_queries.get_sets_count_for_participant(self.pwset_id)
+
+        # fetching the first password
+        self.fill_buffer()
+        self.row = self.fetchone()
+
+    def fill_buffer(self):
+        segments = cache_queries.get_word_segments(self.pwset_id, self.readbuffer_size)
+        self.readbuffer = segments
+        self.readpointer = -1
+
+    def fetchone(self):
+        try:
+            self.readpointer += 1
+            return self.readbuffer[self.readpointer]
+        except:
+            # print "Refilling buffer..."
+            self.fill_buffer()
+            if len(self.readbuffer) < 1:
+                return None
+            else:
+                self.readpointer += 1
+                return self.readbuffer[self.readpointer]
+
+    def next_password(self):
+        if self.row is None:
+            return None
+
+        pwd_id = old_pwd_id = self.row['set_id']
+        pwd = []
+
+        while pwd_id == old_pwd_id:
+            f = Fragment(self.row["set_contains_id"], self.row["dictset_id"], self.row["dict_text"],
+                         self.row["pos"], self.row["sentiment"], self.row["synset"],
+                         self.row["category"], self.row["pass_text"], self.row["s_index"],
+                         self.row["e_index"])
+            pwd.append(f)
+
+            self.row = self.fetchone()
+            if self.row is None:
+                break
+            else:
+                pwd_id = self.row['set_id']
+
+        return pwd
+
+    def save(self, wo, cache=False):
+        if cache:
+            self.savebuffer.append((wo.pos, wo.senti, wo.synsets, wo.id))
+            if len(self.savebuffer) >= self.savebuffer_size:
+                self.flush_save()
+        else:
+            cache_queries.update_set_contains((wo.pos, wo.senti, wo.synsets, wo.id))
+
+    def flush_save(self):
+        # print "updating {} records on the database...".format(len(self.savebuffer))
+        cache_queries.update_set_contains(self.savebuffer)
+        self.savebuffer = []
+
+    def save_category(self, wo):
+        cache_queries.update_set_category(wo.id, wo.category)
+
+    def has_next(self):
+        return self.row is not None
+
+    def finish(self):
+        if len(self.savebuffer) > 0:
+            self.flush_save()
+
+
+class Fragment():
+    def __init__(self, ident, dictset_id, word, pos=None, senti=None,
+                 synsets=None, category=None, password=None, s_index=None, e_index=None):
+        self.id = ident
+        self.dictset_id = dictset_id
+        self.word = word
+        self.pos = pos
+        self.senti = senti
+        self.synsets = synsets
+        self.category = category
+        self.password = password
+        self.s_index = s_index
+        self.e_index = e_index
+
+    def __str__(self):
+        return self.word
+
+    def __repr__(self):
+        return self.word
+
+    def is_gap(self):
+        return self.dictset_id > 90

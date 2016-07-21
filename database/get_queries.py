@@ -123,3 +123,5 @@ def get_transformed_credentials_id(password_set, website_url, password_strength,
     cursor.execute(query)
     transformed_cred_id = cursor.fetchall()[0]['transformed_cred_id']
     return transformed_cred_id
+
+

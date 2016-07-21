@@ -3,6 +3,7 @@ import include.participant as participant
 import database.get_queries as get_queries
 import include.util as utils
 import transformation.segmentation as segmentation
+import transformation.pos_tag as pos_tag
 
 __author__ = 'Ameya'
 
@@ -58,8 +59,8 @@ class Controllers():
                                                                          website_info_dict['password_warning'])
         self.participantObj.set_transformed_cred_id(transformed_cred_id)
 
-        segmentation.segment_password(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
-        self.posTagging()
+        segmentation.segment_word(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
+        pos_tag.pos_tag_word(self.participantObj.get_participant_id())
         self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
 
         # Delete original password after transformation
