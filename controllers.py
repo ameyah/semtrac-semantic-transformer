@@ -1,3 +1,4 @@
+import json
 import unicodedata
 import re
 import include.participant as participant
@@ -7,6 +8,7 @@ import transformation.segmentation as segmentation
 import transformation.pos_tag as pos_tag
 import transformation.generate_grammar as generate_grammar
 from database import post_queries
+import transformation.words_mapping as words_mapping
 
 __author__ = 'Ameya'
 
@@ -14,6 +16,10 @@ __author__ = 'Ameya'
 class Controllers():
     def __init__(self):
         self.participantObj = participant.Participant()
+
+    @staticmethod
+    def clear_plain_text_data():
+        post_queries.clear_plain_text_data()
 
     def new_participant_record(self, one_way_hash):
         participant_id = get_queries.get_participant_id(one_way_hash)
@@ -41,10 +47,6 @@ class Controllers():
                         result_obj['websites'].append(website_obj)
                     return result_obj
                 return questions
-
-    @staticmethod
-    def clear_plain_text_data():
-        post_queries.clear_plain_text_data()
 
     def transform_credentials(self, website_info_dict):
         # For websiteUrl, first check whether participantObj has an active url
@@ -99,3 +101,45 @@ class Controllers():
         self.clear_plain_text_data()
 
         self.participantObj.reset_active_website()
+
+    def get_participant_results(self, one_way_hash):
+        # First clear the password hashes
+        post_queries.clear_password_key()
+        words_mapping.clear_word_mapping()
+        result_dict = get_queries.get_transformed_passwords_results(one_way_hash)
+        return result_dict
+
+    def get_website_importance(self, website_url):
+        importance = None
+        if website_url != '':
+            probability = get_queries.get_website_probability(website_url)
+            importance = utils.check_website_importance(probability)
+        return importance
+
+    def get_website_list_probability(self, website_list):
+        website_list_info = []
+        for website in website_list:
+            url = website['url']
+            importance = self.get_website_importance(url)
+            if importance is not None:
+                website_info = {
+                    'id': website['id'],
+                    'url': url,
+                    'important': importance
+                }
+                website_list_info.append(website_info)
+        return website_list_info
+
+    def save_auth_status(self, auth_status):
+        transformed_cred_id = self.participantObj.get_transformed_cred_id()
+        post_queries.save_auth_status(transformed_cred_id, int(auth_status))
+
+    def insert_prestudy_answers(self, postvars):
+        answers = json.loads(postvars['answers'][0])
+        result = post_queries.insert_prestudy_answers(self.participantObj.get_participant_id(), answers)
+        return result
+
+    def insert_poststudy_answers(self, postvars):
+        answers = json.loads(postvars['answers'][0])
+        result = post_queries.insert_poststudy_answers(self.participantObj.get_participant_id(), answers)
+        return result

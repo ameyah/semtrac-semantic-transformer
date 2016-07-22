@@ -1,6 +1,7 @@
 from server import SemtracServer
 import include.util as utils
 import get_queries
+from dateutil import parser
 
 __author__ = 'Ameya'
 
@@ -99,3 +100,130 @@ def append_email_domain_username(transformed_cred_id, email_domain):
         query = "UPDATE transformed_credentials SET username_text = '{}' WHERE transformed_cred_id={}".format(
             utils.escape(new_username), transformed_cred_id)
         execute_commit_query(query)
+
+
+def clear_password_key():
+    query = "UPDATE password_set SET password_key = NULL"
+    execute_commit_query(query)
+
+
+def save_auth_status(transformed_cred_id, status):
+    query = "UPDATE transformed_credentials SET auth_status = {} WHERE transformed_cred_id = {}".format(status,
+                                                                                                        transformed_cred_id)
+    execute_commit_query(query)
+
+
+def insert_prestudy_answers(participant_id, answers):
+    for answer in answers:
+        if 0 < answer['answer'] < 6:
+            query = "DELETE FROM study_responses WHERE pwset_id = {} AND question_id = {}".format(participant_id,
+                                                                                                  answer['question_id'])
+            execute_commit_query(query)
+            query = "INSERT INTO study_responses SET pwset_id = {}, question_id = {}, response_obj = {}".format(
+                participant_id, answer['question_id'], answer['answer'])
+            execute_commit_query(query)
+        else:
+            return None
+
+    return 1
+
+
+def insert_poststudy_answers(participant_id, answers):
+    for answer in answers:
+        if 0 < answer['answer'] < 6:
+            query = "DELETE FROM study_responses WHERE pwset_id = {} AND question_id = {} AND website_id = {}".format(
+                participant_id, answer['question_id'], answer['website_id'])
+            execute_commit_query(query)
+            query = "INSERT INTO study_responses SET pwset_id = {}, question_id = {}, website_id = {}, response_obj = '{}'".format(
+                participant_id, answer['question_id'], utils.escape(answer['answer']))
+            execute_commit_query(query)
+        else:
+            return None
+
+    return 1
+
+
+def insert_user_website(participant_id, website_id, user_probability, reset_count, date_time_obj):
+    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability={}, password_reset_count = {}, DATE = {}".format(
+        participant_id, website_id, user_probability, reset_count, date_time_obj)
+    execute_commit_query(query)
+
+
+def insert_website_list(db, participant_id, website_list):
+    new_website_id_list = ()
+    for website in website_list:
+        try:
+            url = website['url']
+            website_id = get_queries.check_website_exists(url)
+
+            if website_id is None:
+                # add the website and fetch website_id
+                add_website(url)
+                website_id = get_queries.check_website_exists(url)
+
+            new_website_id_list += (int(website_id),)
+            # Now, we have website_id
+            # Convert date time string to datetime object
+            # dateTimeFormat = '%a, %d %b %Y %H:%M:%S %z'
+            null_date_flag = False
+            if str(website['date']) is "":
+                null_date_flag = True
+            else:
+                try:
+                    date_time_obj = parser.parse(website['date'])
+                except ValueError:
+                    print "date exception"
+                    date_time_obj = parser.parse(website['date'].split("(")[0])
+
+            website_user_probability = 1 if website['important'] else 0
+
+            # First check if entry exists in transformed_passwords table, update it else insert new entry
+            user_website_id = get_queries.get_user_website_id(participant_id, website_id)
+            if user_website_id is not None:
+                if null_date_flag:
+                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {} WHERE user_website_id = {}".format(
+                        website_user_probability, website['reset_count'], user_website_id)
+                    execute_commit_query(query)
+                else:
+                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {}, DATE = {} WHERE user_website_id = {}".format(
+                        website_user_probability, website['reset_count'], date_time_obj, user_website_id)
+                    execute_commit_query(query)
+            else:
+                insert_user_website(participant_id, website_id, website_user_probability, website['reset_count'],
+                                    date_time_obj)
+        except:
+            print "exception"
+            continue
+
+    # Now remove the websites present in database, but not in newly received website_list and websites which dont have
+    # any password associated with them
+    if len(new_website_id_list) == 1:
+        # to remove the trailing comma
+        website_id_list_str = "(" + str(new_website_id_list[0]) + ")"
+    else:
+        website_id_list_str = str(new_website_id_list)
+    query = '''SELECT DISTINCT user_website_id FROM transformed_credentials'''
+    with db.cursor() as cur:
+        cur.execute(query)
+        website_ids = cur.fetchall()
+        not_user_website_ids = ()
+        if len(website_ids) == 1:
+            # to remove the trailing comma
+            not_user_website_ids = "(" + str(int(website_ids[0][0])) + ")"
+        else:
+            for id in website_ids:
+                not_user_website_ids += (int(id[0]),)
+        if len(new_website_id_list) == 0:
+            if len(website_ids) == 0:
+                query = '''DELETE FROM user_websites WHERE pwset_id = ?'''
+            else:
+                query = '''DELETE FROM user_websites WHERE pwset_id = ? AND user_website_id NOT IN {}'''.format(
+                    str(not_user_website_ids))
+        elif len(website_ids) == 0:
+            query = '''DELETE FROM user_websites WHERE pwset_id = ? AND website_id NOT IN {}'''.format(
+                website_id_list_str)
+        else:
+            query = '''DELETE FROM user_websites WHERE pwset_id = ? AND website_id NOT IN {} AND user_website_id NOT IN {}'''.format(
+                website_id_list_str, str(not_user_website_ids))
+        print query
+        cur.execute(query, (participant_id,))

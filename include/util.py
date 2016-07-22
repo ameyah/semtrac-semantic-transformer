@@ -5,6 +5,7 @@ import urlparse
 import os
 import re
 from tldextract import tldextract
+import cgi
 
 
 def dbcredentials(root_path):
@@ -89,6 +90,18 @@ def get_get_param(path, key):
     return urlparse.parse_qs(parsed.query)[key][0]
 
 
+def get_post_data(headers):
+    ctype, pdict = cgi.parse_header(headers)
+    if ctype == 'multipart/form-data':
+        postvars = cgi.parse_multipart(self.rfile, pdict)
+    elif ctype == 'application/x-www-form-urlencoded':
+        length = int(self.headers.getheader('content-length'))
+        postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+    else:
+        postvars = ''
+    return postvars
+
+
 def check_website_syntactic_similarity(url1, url2):
     if url1.lower() == url2.lower():
         return True
@@ -107,3 +120,14 @@ def check_website_syntactic_similarity(url1, url2):
                 return False
         else:
             return False
+
+
+def check_website_importance(probability):
+    if probability is None:
+        importance = False
+    else:
+        if probability >= 0.50:
+            importance = True
+        else:
+            importance = False
+    return importance

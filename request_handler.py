@@ -1,9 +1,8 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
 import json
 from controllers import Controllers
-import cgi
-import urlparse
 import include.util as utils
+import MySQLdb
 
 __author__ = 'Ameya'
 
@@ -20,28 +19,23 @@ def HTTPRequestHandlerContainer():
         def do_POST(self):
             print self.path
             if "/prestudy/answers" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
-                    answers = json.loads(postvars['answers'][0])
-                    result = insert_prestudy_answers(db, participantObj.get_participant_id(), answers)
+                    result = self.controller.insert_prestudy_answers(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
 
             elif "/poststudy/answers" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
-                    answers = json.loads(postvars['answers'][0])
-                    result = insert_poststudy_answers(db, participantObj.get_participant_id(), answers)
+                    result = self.controller.insert_poststudy_answers(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
 
             elif "/website/save" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
                     websiteListData = json.loads(postvars['data'][0])
 
@@ -53,8 +47,7 @@ def HTTPRequestHandlerContainer():
                     self.send_bad_request_response()
 
             elif "/participant/id" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 # set current active participant
                 if postvars != '':
                     # Clear password hashes just to make sure we are clear
@@ -66,8 +59,7 @@ def HTTPRequestHandlerContainer():
                     self.send_bad_request_response()
 
             elif "/participant/website/add" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
                     website_url = str(postvars['url'][0])
                     website_importance = int(postvars['importance'][0])
@@ -77,8 +69,7 @@ def HTTPRequestHandlerContainer():
                     self.send_bad_request_response()
 
             elif "/participant/website" in self.path:
-                ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-                postvars = self.get_post_data(ctype, pdict)
+                postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 # set current active participant
                 if postvars != '':
                     participantObj.set_active_website(str(postvars['url'][0]))
@@ -88,16 +79,6 @@ def HTTPRequestHandlerContainer():
 
             else:
                 self.send_bad_request_response()
-
-        def get_post_data(self, ctype, pdict):
-            if ctype == 'multipart/form-data':
-                postvars = cgi.parse_multipart(self.rfile, pdict)
-            elif ctype == 'application/x-www-form-urlencoded':
-                length = int(self.headers.getheader('content-length'))
-                postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
-            else:
-                postvars = ''
-            return postvars
 
         # handle GET command
         def do_GET(self):
@@ -139,49 +120,30 @@ def HTTPRequestHandlerContainer():
                     }
                     self.controller.transform_credentials(website_info_dict)
                 elif "/participant/results" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
-                    # First clear the password hashes
-                    clear_password_key(db)
-                    words_mapping.clear_word_mapping()
-                    resultDict = get_transformed_passwords_results(db, one_way_hash)
-                    self.send_ok_response(data=json.dumps(resultDict))
+                    one_way_hash = utils.get_get_param(self.path, 'hash')
+                    result_dict = self.controller.get_participant_results(one_way_hash)
+                    self.send_ok_response(data=json.dumps(result_dict))
                 elif "/website/importance" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    website_url = urlparse.parse_qs(parsed.query)['url'][0]
-                    if website_url != '':
-                        importance = get_website_probability(db, website_url)
-                        print website_url + " - " + importance
+                    website_url = utils.get_get_param(self.path, 'url')
+                    importance = self.controller.get_website_importance(website_url)
+                    if importance is not None:
                         self.send_ok_response(data=importance)
                     else:
                         self.send_bad_request_response()
                 elif "/website/list/importance" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    # print json.loads(urlparse.parse_qs(parsed.query)['urls'][0])
-                    website_urls = json.loads(urlparse.parse_qs(parsed.query)['urls'][0])
-                    website_importance_data = get_website_list_probability(db, website_urls)
+                    website_urls = utils.get_get_param(self.path, 'urls')
+                    website_importance_data = self.controller.get_website_list_probability(website_urls)
                     self.send_ok_response(data=json.dumps(website_importance_data))
-                    """
-                    if website_url != '':
-                        importance = get_website_probability(db, website_url)
-                        print website_url + " - " + importance
-                        self.send_ok_response(data=importance)
-                    else:
-                        self.send_bad_request_response()
-
-                    """
                 elif "/auth" in self.path:
-                    parsed = urlparse.urlparse(self.path)
-                    auth_status = urlparse.parse_qs(parsed.query)['success'][0]
-                    transformed_cred_id = participantObj.get_transformed_cred_id()
-                    save_auth_status(db, transformed_cred_id, auth_status)
+                    auth_status = utils.get_get_param(self.path, 'success')
+                    self.controller.save_auth_status(auth_status)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
-            except oursql.Error as e:
+            except MySQLdb.Error as e:
                 print e
                 print "exception"
-                clearPassword = ''
+                clear_password = ''
 
             return
 
