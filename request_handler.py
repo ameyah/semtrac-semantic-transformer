@@ -137,57 +137,7 @@ def HTTPRequestHandlerContainer():
                         'password_warning': password_warning,
                         'active_url': active_url
                     }
-
-                    # For websiteUrl, first check whether participantObj has an active url
-                    activeWebsite = participantObj.get_active_website()
-                    if activeWebsite != '':
-                        websiteUrl = activeWebsite
-                    else:
-                        # get active page URL from GET params
-                        websiteUrl = urlparse.parse_qs(parsed.query)['url'][0]
-                        previousActiveWebsite = participantObj.get_previous_active_website()
-                        if checkWebsiteSyntacticSimilarity(websiteUrl, previousActiveWebsite):
-                            websiteUrl = previousActiveWebsite
-                    clearPasswordURIDecoded = urllib.unquote(urllib.unquote(clearPassword))
-                    clearUsernameURIDecoded = urllib.unquote(urllib.unquote(clearUsername))
-                    self.send_ok_response()
-
-                    # First insert the login website in the database
-                    transformed_cred_id = get_transformed_credentials_id(db, participantObj.get_participant_id(),
-                                                                         websiteUrl, passwordStrength, passwordWarning)
-                    participantObj.set_transformed_cred_id(transformed_cred_id)
-
-                    self.segmentPassword(clearPasswordURIDecoded, True)
-                    self.posTagging()
-                    self.grammarGeneration(transformed_cred_id, clearPassword=clearPasswordURIDecoded)
-
-                    # Delete original password after transformation
-                    self.clearOriginalData()
-
-                    # Transform usernames semantically. We'll use the same functions for now.
-                    # as the procedure is same, except that we dont have to store grammar.
-                    # First check if username is email, if it is then extract email username and transform only the
-                    # username
-                    email_split_flag = False
-                    if re.match("[^@]+@[^@]+\.[^@]+", clearUsernameURIDecoded):
-                        email_username = clearUsernameURIDecoded.split("@")[0]
-                        email_split_flag = True
-                    else:
-                        email_username = clearUsernameURIDecoded
-                    self.segmentPassword(email_username, False)
-                    self.posTagging()
-                    self.grammarGeneration(transformed_cred_id, type="username")
-
-                    if email_split_flag:
-                        # Now append the email domain to the transformed Username
-                        email_domain = "@" + clearUsernameURIDecoded.split("@")[1]
-                        append_email_domain(db, transformed_cred_id, email_domain)
-
-                    # store clearUsername in participantObj
-                    participantObj.set_active_username(clearUsernameURIDecoded)
-                    self.clearOriginalData()
-
-                    participantObj.reset_active_website()
+                    self.controller.transform_credentials(website_info_dict)
                 elif "/participant/results" in self.path:
                     parsed = urlparse.urlparse(self.path)
                     one_way_hash = urlparse.parse_qs(parsed.query)['hash'][0]
