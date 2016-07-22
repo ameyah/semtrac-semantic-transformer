@@ -7,6 +7,7 @@ import database.get_queries as get_queries
 import database.post_queries as post_queries
 from transformation import words_mapping
 import include.util as utils
+from include.cache_data import Fragment
 
 __author__ = 'Ameya'
 
@@ -163,6 +164,26 @@ def generate_transformed_segment(segment, tag, password_key):
                 transformed_segment = segment.word
     words_mapping.insert_word_mapping(segment, transformed_segment)
     return transformed_segment
+
+
+def segment_gaps(pwd):
+    """
+    Segments a string into alpha, digit and "symbol" fragments.
+    """
+    regex = r'\d+|[a-zA-Z]+|[^a-zA-Z0-9]+'
+    segments = re.findall(regex, pwd)
+    segmented = []
+    for s in segments:
+        if s[0].isalpha():
+            f = Fragment(0, 203, s)
+        elif s[0].isdigit():
+            f = Fragment(0, 200, s)
+        else:
+            f = Fragment(0, 202, s)
+
+        segmented.append(f)
+
+    return segmented
 
 
 def expand_gaps(segments):
