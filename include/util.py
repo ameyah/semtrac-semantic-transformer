@@ -1,3 +1,5 @@
+import random
+import string
 import urllib
 import urlparse
 import os
@@ -49,6 +51,24 @@ def is_sc_chunk(s):
 def is_char_chunk(s):
     reg_is_char_chunk = re.compile("^[a-zA-Z]+$")
     return bool(reg_is_char_chunk.match(s))
+
+
+def generate_n_digit_random(n):
+    range_start = 10 ** (n - 1)
+    range_end = (10 ** n) - 1
+    return random.randint(range_start, range_end)
+
+
+def generate_n_char_random(n):
+    return ''.join(random.choice(string.lowercase) for i in range(n))
+
+
+def generate_n_symbol_random(n):
+    return ''.join(random.choice(string.punctuation) for i in range(n))
+
+
+def stringify_pattern(tags):
+    return ''.join(['({})'.format(tag) for tag in tags])
 
 
 def get_maximum_list_length(dictionary):

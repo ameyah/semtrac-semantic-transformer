@@ -128,7 +128,7 @@ def get_transformed_credentials_id(password_set, website_url, password_strength,
 
 def get_password_key(pwset_id):
     query = "SELECT password_key FROM password_set WHERE pwset_id={}".format(pwset_id)
-    cursor.execute(query.get_password_key(pwset_id))
+    cursor.execute(query)
     res = cursor.fetchall()
     if len(res) > 0:
         password_key = res[0]['password_key']
@@ -137,3 +137,64 @@ def get_password_key(pwset_id):
             password_key = random.randint(1, (2**32-1))
             post_queries.insert_password_key(pwset_id, password_key)
     return password_key
+
+
+def get_dictionary_type_count(dictset_id):
+    query = "SELECT COUNT(*) as count FROM passwords.dictionary WHERE dictset_id = {} " . format(dictset_id)
+    cursor.execute(query)
+    count = cursor.fetchall()[0]['count']
+    return count
+
+
+def get_dictionary_word(dictset_id, seq_no):
+    query = "SELECT dict_text FROM passwords.dictionary WHERE dictset_id = {} " . format(dictset_id)
+    query += "LIMIT 1 OFFSET {}" . format(seq_no - 1)
+    cursor.execute(query)
+    dict_text = cursor.fetchall()[0]['dict_text']
+    return dict_text
+
+
+def check_wordset_pos(pos):
+    query = "SELECT wordset_id FROM passwords.wordlist_set WHERE wordset_name = '{}'" . format(pos)
+    cursor.execute(query)
+    rowcount = cursor.rowcount > 0
+    return rowcount
+
+
+def get_wordlist_type_count(pos):
+    query = "SELECT COUNT(*) as count FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
+            "WHERE wordset_name = '{}') " . format(pos)
+    cursor.execute(query)
+    count = cursor.fetchall()[0]['count']
+    return count
+
+
+def get_wordlist_word(pos, seq_no):
+    query = "SELECT wordlist_text FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
+            "WHERE wordset_name = '{}') " . format(pos)
+    query += "LIMIT 1 OFFSET {}" . format(seq_no - 1)
+    cursor.execute(query)
+    wordlist_text = cursor.fetchall()[0]['wordlist_text']
+    return wordlist_text
+
+
+def get_grammar_id(grammar_text):
+    query = "SELECT grammar_id FROM grammar WHERE grammar_text = '{}'".format(grammar_text)
+    cursor.execute(query)
+    res = cursor.fetchall()
+    if len(res) > 0:
+        # Grammar already present. Get grammar_id
+        return res[0]['grammar_id']
+    else:
+        # Insert grammar_text and get its id
+        post_queries.insert_grammar(grammar_text)
+        cursor.execute(query)
+        res = cursor.fetchall()
+        return res[0]['grammar_id']
+
+
+def get_transformed_username(transformed_cred_id):
+    query = "SELECT username_text FROM transformed_credentials WHERE transformed_cred_id={}".format(transformed_cred_id)
+    cursor.execute(query)
+    transformed_username = cursor.fetchall[0]['username_text']
+    return transformed_username

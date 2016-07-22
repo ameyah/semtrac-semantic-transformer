@@ -1,19 +1,23 @@
+import hashlib
+import string
 from nltk.probability import FreqDist, ConditionalFreqDist
+import re
 from include.cache_data import TempWordBuffer
 import database.get_queries as get_queries
+import database.post_queries as post_queries
+from transformation import words_mapping
+import include.util as utils
 
 __author__ = 'Ameya'
 
 
-def generate_grammar(participant_id):
+def generate_grammar(participant_id, transformed_cred_id, **kwargs):
     word_buffer_obj = TempWordBuffer(participant_id)
     patterns_dist = FreqDist()  # distribution of patterns
     segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
 
     # check for password_key, insert if necessary
     password_key = get_queries.get_password_key(participant_id)
-
-    counter = 0
 
     while word_buffer_obj.has_next():
         segments = word_buffer_obj.next_password()
@@ -24,54 +28,141 @@ def generate_grammar(participant_id):
         segments = expand_gaps(segments)
 
         for s in segments:  # semantic tags
-            if tag_type == 'pos':
-                tag = classify_by_pos(s)
-            elif tag_type == 'backoff':
-                tag = classify_semantic_backoff_pos(s)
-            elif tag_type == 'word':
-                tag = classify_word(s)
-            else:
-                tag = classify_pos_semantic(s)
-
+            tag = classify_pos_semantic(s)
             tags.append(tag)
-            transformedSegment = str(generate_transformed_segment(s, tag, password_key))
-            transformedPassword += transformedSegment
+            transformed_segment = str(generate_transformed_segment(s, tag, password_key))
+            transformed_password += transformed_segment
 
             # Save transformed segment with corresponding capitalization information
-            if kwargs.get("clearPassword") is not None:
-                save_transformed_segment_info(transformed_cred_id, transformedSegment, tag, s.s_index, s.e_index,
-                                              kwargs.get("clearPassword"))
+            if kwargs.get("clear_password") is not None:
+                save_transformed_segment_info(transformed_cred_id, transformed_segment, tag, s.s_index, s.e_index,
+                                              kwargs.get("clear_password"))
 
             segments_dist[tag][s.word] += 1
 
-        pattern = stringify_pattern(tags)
+        pattern = utils.stringify_pattern(tags)
         patterns_dist[pattern] += 1
 
         if kwargs.get("type") == "username":
             # save username at transformed_cred_id and return
-            # variable transformedPassword is actually transformed username
-            transformedUsername = transformedPassword
-            database.save_transformed_username(transformed_cred_id, transformedUsername)
+            # variable transformed_password is actually transformed username
+            transformed_username = transformed_password
+            post_queries.save_transformed_username(transformed_cred_id, transformed_username)
             return
 
         # Save transformed password in the database if transformed_cred_id is not None
         if transformed_cred_id is not None:
-            database.save_transformed_password(transformed_cred_id, transformedPassword, str(pattern))
+            post_queries.save_transformed_password(transformed_cred_id, transformed_password, str(pattern))
 
-        # outputs the classification results for debugging purposes
-        if verbose:
-            print_result(password, segments, tags, pattern)
 
-        counter += 1
-        if counter % 100000 == 0:
-            print "{} passwords processed so far ({:.2%})... ".format(counter, float(counter) / db.sets_size)
+class DictionaryTag:
+    map = {10: 'month',
+           20: 'fname',
+           30: 'mname',
+           40: 'surname',
+           50: 'country',
+           60: 'city',
+           200: 'number',
+           201: 'num+special',
+           202: 'special',
+           203: 'char',
+           204: 'all_mixed'}
 
-            #     tags_file.close()
+    # pos_map is used to map infrequent POS words to their respective parent class
+    pos_map = {
+        'prep': ['io', 'if', 'bcl', 'p'],
+        'pn': ['ppis1', 'pphs2', 'ppis2', 'pnqs', 'ppio1', 'ppho2', 'ppho1', 'ppio2', 'ppx2', 'pnqo', 'ppge', 'pnqv',
+               'pnx1'],
+        'cc': ['c', 'ccb', 'csa', 'csn', 'cst', 'csw'],
+        'dd': ['d', 'da', 'da1', 'da2', 'dar', 'dat', 'db2', 'dd1', 'dd2', 'ddqge', 'ddqv'],
+        'vv0': ['vb0', 'vbdr', 'vbg', 'vbi', 'vbm', 'vbn', 'vbr', 'vd', 'vd0', 'vdd', 'vdg', 'vdi', 'vdn', 'vdz', 'vh0',
+                'vhd',
+                'vhg', 'vhi', 'vhn', 'vhz', 'vm', 'vmk', 'vvgk', 'vvnk'],
+        'rr': ['ra', 'rex', 'rg', 'rgq', 'rgqv', 'rgr', 'rgt', 'rl', 'rpk', 'rrq', 'rrqv', 'rrr', 'rrt', 'rt', 'rp'],
+        'mc': ['mc1', 'm', 'm1'],
+        'jj': ['jk', 'j'],
+        'nn': ['n', 'nna', 'nnl1', 'nnl2', 'nnt1', 'nnt2'],
+        'nno': ['nno2'],
+        'np': ['npd2'],
+        'npm1': ['npm2']
+    }
 
-    pwset_id = str(pwset_id)
+    _gaps = None
 
-    if dryrun:
-        return
+    @classmethod
+    def get(cls, id):
+        return DictionaryTag.map[id] if id in DictionaryTag.map else None
+
+    @classmethod
+    def gaps(cls):
+        if not DictionaryTag._gaps:
+            DictionaryTag._gaps = [v for k, v in DictionaryTag.map.items() if DictionaryTag.is_gap(k)]
+
+        return DictionaryTag._gaps
+
+    @classmethod
+    def is_gap(cls, id):
+        return id > 90
+
+
+def get_parent_pos(pos):
+    if pos is None:
+        return pos
+    for parent_pos in DictionaryTag.pos_map:
+        if pos.lower() in DictionaryTag.pos_map[parent_pos]:
+            return parent_pos
+    return pos
+
+
+def generate_transformed_segment(segment, tag, password_key):
+    # tag is generated by grammar classification
+    # First check if temporary dictionary contains the segment
+    transformed_segment = words_mapping.get_word_mapping(segment)
+    if transformed_segment is not None:
+        return transformed_segment
+    one_way_hash = hashlib.sha512(segment.word + str(password_key)).hexdigest()
+    # this one_way_hash might only contain characters. So, there are no digits. Add a \space to add some digits
+    if one_way_hash.isalpha():
+        one_way_hash = hashlib.sha512(segment.word + str(password_key) + " ").hexdigest()
+
+    # Remove alphabets from SHA512 hash
+    string_translation = string.maketrans('', '')
+    no_digits = string_translation.translate(string_translation, string.digits)
+    one_way_hash = one_way_hash.translate(string_translation, no_digits)
+
+    if segment.dictset_id <= 60:
+        # map the hash to a position in database and return the word at that position
+        total_dictionary_type = get_queries.get_dictionary_type_count(segment.dictset_id)
+        dictionary_position = int(one_way_hash) % int(total_dictionary_type)
+        transformed_segment = get_queries.get_dictionary_word(segment.dictset_id, int(dictionary_position))
+    else:
+        parent_pos = get_parent_pos(segment.pos)
+        # Check if POS is in wordset
+        if get_queries.check_wordset_pos(parent_pos) and parent_pos is not None:
+            total_wordlist_type = get_queries.get_wordlist_type_count(parent_pos)
+            wordlist_position = int(one_way_hash) % int(total_wordlist_type)
+            if wordlist_position == 0:
+                wordlist_position = 1  # In query, we subtract this number by 1. So, if this number is 1,
+                # then the position will be 0 in query
+            transformed_segment = get_queries.get_wordlist_word(parent_pos, wordlist_position)
+        else:
+            # either a number, garbled characters or special symbols
+            # check tag
+            if "number" in tag:
+                count = int(tag.split("number")[1])
+                transformed_segment = utils.generate_n_digit_random(count)
+            elif "char" in tag:
+                count = int(tag.split("char")[1])
+                transformed_segment = utils.generate_n_char_random(count)
+            elif "special" in tag:
+                count = int(tag.split("special")[1])
+                transformed_segment = utils.generate_n_symbol_random(count)
+            else:
+                print segment.word
+                print tag
+                transformed_segment = segment.word
+    words_mapping.insert_word_mapping(segment, transformed_segment)
+    return transformed_segment
 
 
 def expand_gaps(segments):
@@ -90,3 +181,80 @@ def expand_gaps(segments):
             temp.append(s)
 
     return temp
+
+
+def refine_gap(segment):
+    return DictionaryTag.map[segment.dictset_id] + str(len(segment.word))
+
+
+def classify_pos_semantic(segment):
+    """ Fully classify the segment. Returns a tag  possibly containing semantic
+    and  syntactic (part-of-speech) symbols.  If the segment  is a proper noun,
+    returns either month, fname, mname, surname, city or country,  as suitable.
+    For  other words, returns a  tag of  the form pos_synset,  where  pos is  a
+    part-of-speech tag and  synset is the corresponding  WordNet synset.  If no
+    synset exists, the symbol 'None' is used.   Aside from these classes, there
+    is also numberN, charN, and specialN, for numbers, character sequences  and
+    sequences of  special characters,  respectively, where N denotes the length
+    of the segment.
+    Examples:
+        loved -> vvd_s.love.v.01
+        paris -> city
+        jonas -> mname
+        cindy -> fname
+        aaaaa -> char5
+    """
+    if DictionaryTag.is_gap(segment.dictset_id):
+        tag = refine_gap(segment)
+    elif segment.pos in ['np', 'np1', 'np2', None] and segment.dictset_id in DictionaryTag.map:
+        tag = DictionaryTag.map[segment.dictset_id]
+    else:
+        # We dont have to use WordNet for USC Cloudsweeper.
+        # So, no need to convert to Wordnet synset
+        # just set the tag to segment.pos
+        tag = segment.pos
+    return tag
+
+
+def save_transformed_segment_info(transformed_cred_id, transformed_segment, segment_tag, start_index, end_index,
+                                  clear_password):
+    # Extract clear password segment based on start_index and end_index
+    clear_password_segment = clear_password[start_index:end_index]
+
+    SPECIAL_CHAR_MATCH = re.compile(r'[!1~@#3$5\|0]', re.I)
+
+    def handle_capitalization(match_str):
+        capital_position_list = ['0', '0', '0']
+        # check if first and last letters are capital
+        if match_str[0] in string.uppercase:
+            capital_position_list[0] = "1"
+        if match_str[len(match_str) - 1] in string.uppercase:
+            capital_position_list[2] = "1"
+        for i in range(1, len(match_str) - 1):
+            if match_str[i] in string.uppercase:
+                capital_position_list[1] = "1"
+                break
+        return "".join(capital_position_list)
+
+    def handle_special_char_mapping(match_str):
+        special_char_info = ['0', '0', '0']
+        for m in SPECIAL_CHAR_MATCH.finditer(match_str):
+            if m.start() == 0:
+                special_char_info[0] = "1"
+            elif m.start() == len(match_str) - 1:
+                special_char_info[2] = "1"
+            else:
+                special_char_info[1] = "1"
+        return "".join(special_char_info)
+
+    # for generating special character info, first check whether the segment is a valid word
+    # remove any digits from segment_tag
+    segment_tag_no_digits = ''.join([i for i in segment_tag if not i.isdigit()])
+    if segment_tag_no_digits not in ["special", "number"]:
+        capitalization_info = handle_capitalization(clear_password_segment)
+        special_char_info = handle_special_char_mapping(clear_password_segment)
+    else:
+        capitalization_info = "000"
+        special_char_info = "000"
+    post_queries.save_transformed_segment_info(transformed_cred_id, transformed_segment, capitalization_info,
+                                               special_char_info)
