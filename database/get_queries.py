@@ -255,3 +255,10 @@ def get_user_website_id(participant_id, website_id):
         return user_website_id
     else:
         return None
+
+
+def get_distinct_user_website_ids():
+    query = "SELECT DISTINCT user_website_id FROM transformed_credentials"
+    cursor.execute(query)
+    user_website_ids = cursor.fetchall()
+    return user_website_ids

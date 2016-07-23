@@ -37,11 +37,7 @@ def HTTPRequestHandlerContainer():
             elif "/website/save" in self.path:
                 postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
-                    websiteListData = json.loads(postvars['data'][0])
-
-                    # save website list
-                    insert_website_list(db, participantObj.get_participant_id(), websiteListData)
-                    # website_list_info = get_website_list_probability(db, websiteListData)
+                    self.controller.save_user_website_list(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
@@ -50,10 +46,7 @@ def HTTPRequestHandlerContainer():
                 postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 # set current active participant
                 if postvars != '':
-                    # Clear password hashes just to make sure we are clear
-                    clear_password_key(db)
-                    words_mapping.clear_word_mapping()
-                    participantObj.set_participant_id(int(postvars['id'][0]))
+                    self.controller.set_participant_id(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
@@ -61,9 +54,7 @@ def HTTPRequestHandlerContainer():
             elif "/participant/website/add" in self.path:
                 postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 if postvars != '':
-                    website_url = str(postvars['url'][0])
-                    website_importance = int(postvars['importance'][0])
-                    result = add_new_website(db, participantObj.get_participant_id(), website_url, website_importance)
+                    result = self.controller.add_new_user_website(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
@@ -72,7 +63,7 @@ def HTTPRequestHandlerContainer():
                 postvars = utils.get_post_data(self.headers.getheader('content-type'))
                 # set current active participant
                 if postvars != '':
-                    participantObj.set_active_website(str(postvars['url'][0]))
+                    self.controller.set_active_website(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()

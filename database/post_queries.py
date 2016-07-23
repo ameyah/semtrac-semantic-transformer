@@ -149,7 +149,7 @@ def insert_user_website(participant_id, website_id, user_probability, reset_coun
     execute_commit_query(query)
 
 
-def insert_website_list(db, participant_id, website_list):
+def insert_website_list(participant_id, website_list):
     new_website_id_list = ()
     for website in website_list:
         try:
@@ -202,28 +202,43 @@ def insert_website_list(db, participant_id, website_list):
         website_id_list_str = "(" + str(new_website_id_list[0]) + ")"
     else:
         website_id_list_str = str(new_website_id_list)
-    query = '''SELECT DISTINCT user_website_id FROM transformed_credentials'''
-    with db.cursor() as cur:
-        cur.execute(query)
-        website_ids = cur.fetchall()
-        not_user_website_ids = ()
-        if len(website_ids) == 1:
-            # to remove the trailing comma
-            not_user_website_ids = "(" + str(int(website_ids[0][0])) + ")"
+    website_ids = get_queries.get_distinct_user_website_ids()
+    not_user_website_ids = ()
+    if len(website_ids) == 1:
+        # to remove the trailing comma
+        not_user_website_ids = "(" + str(int(website_ids[0]['user_website_id'])) + ")"
+    else:
+        for id in website_ids:
+            not_user_website_ids += (int(id['user_website_id']),)
+    if len(new_website_id_list) == 0:
+        if len(website_ids) == 0:
+            query = "DELETE FROM user_websites WHERE pwset_id = {}".format(participant_id)
         else:
-            for id in website_ids:
-                not_user_website_ids += (int(id[0]),)
-        if len(new_website_id_list) == 0:
-            if len(website_ids) == 0:
-                query = '''DELETE FROM user_websites WHERE pwset_id = ?'''
-            else:
-                query = '''DELETE FROM user_websites WHERE pwset_id = ? AND user_website_id NOT IN {}'''.format(
-                    str(not_user_website_ids))
-        elif len(website_ids) == 0:
-            query = '''DELETE FROM user_websites WHERE pwset_id = ? AND website_id NOT IN {}'''.format(
-                website_id_list_str)
-        else:
-            query = '''DELETE FROM user_websites WHERE pwset_id = ? AND website_id NOT IN {} AND user_website_id NOT IN {}'''.format(
-                website_id_list_str, str(not_user_website_ids))
-        print query
-        cur.execute(query, (participant_id,))
+            query = "DELETE FROM user_websites WHERE pwset_id = {} AND user_website_id NOT IN {}".format(participant_id,
+                                                                                                         str(
+                                                                                                             not_user_website_ids))
+    elif len(website_ids) == 0:
+        query = '''DELETE FROM user_websites WHERE pwset_id = {} AND website_id NOT IN {}'''.format(participant_id,
+                                                                                                    website_id_list_str)
+    else:
+        query = '''DELETE FROM user_websites WHERE pwset_id = {} AND website_id NOT IN {} AND user_website_id NOT IN {}'''.format(
+            participant_id, website_id_list_str, str(not_user_website_ids))
+    execute_commit_query(query)
+
+
+def add_new_website(participant_id, website_url, website_importance):
+    website_id = get_queries.check_website_exists(website_url)
+    if website_id is None:
+        # add the website and fetch website_id
+        add_website(website_url)
+        website_id = get_queries.check_website_exists(website_url)
+    user_website_id = get_queries.get_user_website_id(participant_id, website_id)
+    if user_website_id is not None:
+        query = "UPDATE user_websites SET website_probability = {} WHERE user_website_id = {}".format(
+            int(website_importance), int(user_website_id))
+        execute_commit_query(query)
+        return 1
+    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability = {}".format(
+        participant_id, website_id, website_importance)
+    execute_commit_query(query)
+    return 1

@@ -143,3 +143,23 @@ class Controllers():
         answers = json.loads(postvars['answers'][0])
         result = post_queries.insert_poststudy_answers(self.participantObj.get_participant_id(), answers)
         return result
+
+    def save_user_website_list(self, postvars):
+        website_list_data = json.loads(postvars['data'][0])
+        # save website list
+        post_queries.insert_website_list(self.participantObj.get_participant_id(), website_list_data)
+
+    def set_participant_id(self, postvars):
+        # Clear password hashes just to make sure we are clear
+        post_queries.clear_password_key()
+        words_mapping.clear_word_mapping()
+        self.participantObj.set_participant_id(int(postvars['id'][0]))
+
+    def add_new_user_website(self, postvars):
+        website_url = str(postvars['url'][0])
+        website_importance = int(postvars['importance'][0])
+        result = post_queries.add_new_website(self.participantObj.get_participant_id(), website_url, website_importance)
+        return result
+
+    def set_active_website(self, postvars):
+        self.participantObj.set_active_website(str(postvars['url'][0]))
