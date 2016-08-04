@@ -90,13 +90,13 @@ def get_get_param(path, key):
     return urlparse.parse_qs(parsed.query)[key][0]
 
 
-def get_post_data(headers):
-    ctype, pdict = cgi.parse_header(headers)
+def get_post_data(headers, rfile):
+    ctype, pdict = cgi.parse_header(headers.getheader('content-type'))
     if ctype == 'multipart/form-data':
-        postvars = cgi.parse_multipart(self.rfile, pdict)
+        postvars = cgi.parse_multipart(rfile, pdict)
     elif ctype == 'application/x-www-form-urlencoded':
-        length = int(self.headers.getheader('content-length'))
-        postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
+        length = int(headers.getheader('content-length'))
+        postvars = cgi.parse_qs(rfile.read(length), keep_blank_values=1)
     else:
         postvars = ''
     return postvars

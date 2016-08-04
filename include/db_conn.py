@@ -14,6 +14,9 @@ class Database():
                                          db=credentials["db"],
                                          cursorclass=MySQLdb.cursors.SSDictCursor)  # stores result in the server. records as dict
 
+        def get_conn(self):
+            return self.connection
+
         def get_cursor(self):
             return self.connection.cursor()
 

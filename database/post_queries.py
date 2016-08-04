@@ -144,7 +144,7 @@ def insert_poststudy_answers(participant_id, answers):
 
 
 def insert_user_website(participant_id, website_id, user_probability, reset_count, date_time_obj):
-    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability={}, password_reset_count = {}, DATE = {}".format(
+    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability={}, password_reset_count = {}, date = '{}'".format(
         participant_id, website_id, user_probability, reset_count, date_time_obj)
     execute_commit_query(query)
 
@@ -170,10 +170,10 @@ def insert_website_list(participant_id, website_list):
                 null_date_flag = True
             else:
                 try:
-                    date_time_obj = parser.parse(website['date'])
+                    date_time_obj = parser.parse(website['date'], ignoretz=True)
                 except ValueError:
                     print "date exception"
-                    date_time_obj = parser.parse(website['date'].split("(")[0])
+                    date_time_obj = parser.parse(website['date'].split("(")[0], ignoretz=True)
 
             website_user_probability = 1 if website['important'] else 0
 
@@ -185,13 +185,14 @@ def insert_website_list(participant_id, website_list):
                         website_user_probability, website['reset_count'], user_website_id)
                     execute_commit_query(query)
                 else:
-                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {}, DATE = {} WHERE user_website_id = {}".format(
+                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {}, date = '{}' WHERE user_website_id = {}".format(
                         website_user_probability, website['reset_count'], date_time_obj, user_website_id)
                     execute_commit_query(query)
             else:
                 insert_user_website(participant_id, website_id, website_user_probability, website['reset_count'],
                                     date_time_obj)
-        except:
+        except Exception as e:
+            print e
             print "exception"
             continue
 

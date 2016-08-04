@@ -30,7 +30,7 @@ class Controllers():
         if questions_type == "CURRENT" or questions_type == "RISK" or questions_type == "POST":
             questions = get_queries.get_study_questions(questions_type)
             questions = [{"question_id": int(elem['question_id']),
-                          "question": unicodedata.normalize('NFKD', elem['question']).encode('ascii', 'ignore')} for
+                          "question": unicodedata.normalize('NFKD', unicode(elem['question'], errors='ignore'))} for
                          elem in questions]
             if len(questions) > 0:
                 if questions_type == "POST":
@@ -118,6 +118,7 @@ class Controllers():
 
     def get_website_list_probability(self, website_list):
         website_list_info = []
+        website_list = json.loads(website_list)
         for website in website_list:
             url = website['url']
             importance = self.get_website_importance(url)

@@ -3,7 +3,6 @@ from BaseHTTPServer import HTTPServer
 import ssl
 import include.db_conn as db_conn
 import include.timer as timer
-from request_handler import HTTPRequestHandlerContainer
 
 __author__ = 'Ameya'
 
@@ -17,7 +16,7 @@ class SemtracServer():
         def get_db_conn(self):
             if self.db is None:
                 self.db = db_conn.Database(os.path.abspath(__file__))
-            return self.db
+            return self.db.get_conn()
 
         def get_db_cursor(self):
             if self.db is None:
@@ -48,6 +47,7 @@ class SemtracServer():
 
         def start_server(self):
             server_address = ('127.0.0.1', 443)
+            from request_handler import HTTPRequestHandlerContainer
             HTTPHandlerClass = HTTPRequestHandlerContainer()
             httpd = HTTPServer(server_address, HTTPHandlerClass)
             httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
@@ -71,5 +71,5 @@ class SemtracServer():
 
 if __name__ == '__main__':
     server = SemtracServer()
-    server.pre_tasks()
+    # server.pre_tasks()
     server.start_server()

@@ -9,11 +9,11 @@ class Cache():
     class __Cache():
 
         def __init__(self, db):
+            server = SemtracServer()
             if db is None:
-                server = SemtracServer()
                 db = server.get_db_conn()
             self.db_conn = db
-            self.db_cursor = db.get_cursor()
+            self.db_cursor = server.get_db_cursor()
 
             # initialize variables
             self.freq_info = ()

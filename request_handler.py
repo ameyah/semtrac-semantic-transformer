@@ -9,61 +9,63 @@ __author__ = 'Ameya'
 
 def HTTPRequestHandlerContainer():
 
+    controller = Controllers()
+
     class HTTPRequestHandler(BaseHTTPRequestHandler):
 
         def __init__(self, request, client_address, server):
             BaseHTTPRequestHandler.__init__(self, request, client_address, server)
-            self.controller = Controllers()
+            # self.controller = Controllers()
 
         # handle POST command
         def do_POST(self):
             print self.path
             if "/prestudy/answers" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 if postvars != '':
-                    result = self.controller.insert_prestudy_answers(postvars)
+                    result = controller.insert_prestudy_answers(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
 
             elif "/poststudy/answers" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 if postvars != '':
-                    result = self.controller.insert_poststudy_answers(postvars)
+                    result = controller.insert_poststudy_answers(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
 
             elif "/website/save" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 if postvars != '':
-                    self.controller.save_user_website_list(postvars)
+                    controller.save_user_website_list(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
 
             elif "/participant/id" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 # set current active participant
                 if postvars != '':
-                    self.controller.set_participant_id(postvars)
+                    controller.set_participant_id(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
 
             elif "/participant/website/add" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 if postvars != '':
-                    result = self.controller.add_new_user_website(postvars)
+                    result = controller.add_new_user_website(postvars)
                     self.send_ok_response(data=result)
                 else:
                     self.send_bad_request_response()
 
             elif "/participant/website" in self.path:
-                postvars = utils.get_post_data(self.headers.getheader('content-type'))
+                postvars = utils.get_post_data(self.headers, self.rfile)
                 # set current active participant
                 if postvars != '':
-                    self.controller.set_active_website(postvars)
+                    controller.set_active_website(postvars)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
@@ -79,12 +81,12 @@ def HTTPRequestHandlerContainer():
 
                 elif "/participant/id" in self.path:
                     one_way_hash = utils.get_get_param(self.path, 'hash')
-                    participant_id = self.controller.new_participant_record(one_way_hash)
+                    participant_id = controller.new_participant_record(one_way_hash)
                     self.send_ok_response(data=participant_id)
 
                 elif "/study/questions" in self.path:
                     question_type = utils.get_get_param(self.path, 'type')
-                    result = self.controller.get_study_questions(question_type)
+                    result = controller.get_study_questions(question_type)
                     self.send_ok_response(data=json.dumps(result))
 
                 elif "/transform" in self.path:
@@ -109,25 +111,25 @@ def HTTPRequestHandlerContainer():
                         'password_warning': password_warning,
                         'active_url': active_url
                     }
-                    self.controller.transform_credentials(website_info_dict)
+                    controller.transform_credentials(website_info_dict)
                 elif "/participant/results" in self.path:
                     one_way_hash = utils.get_get_param(self.path, 'hash')
-                    result_dict = self.controller.get_participant_results(one_way_hash)
+                    result_dict = controller.get_participant_results(one_way_hash)
                     self.send_ok_response(data=json.dumps(result_dict))
                 elif "/website/importance" in self.path:
                     website_url = utils.get_get_param(self.path, 'url')
-                    importance = self.controller.get_website_importance(website_url)
+                    importance = controller.get_website_importance(website_url)
                     if importance is not None:
                         self.send_ok_response(data=importance)
                     else:
                         self.send_bad_request_response()
                 elif "/website/list/importance" in self.path:
                     website_urls = utils.get_get_param(self.path, 'urls')
-                    website_importance_data = self.controller.get_website_list_probability(website_urls)
+                    website_importance_data = controller.get_website_list_probability(website_urls)
                     self.send_ok_response(data=json.dumps(website_importance_data))
                 elif "/auth" in self.path:
                     auth_status = utils.get_get_param(self.path, 'success')
-                    self.controller.save_auth_status(auth_status)
+                    controller.save_auth_status(auth_status)
                     self.send_ok_response()
                 else:
                     self.send_bad_request_response()
@@ -155,55 +157,5 @@ def HTTPRequestHandlerContainer():
         # suppress logs
         def log_message(self, format, *args):
             return
-
-        def segmentPassword(self, clearPassword, checkSpecialChars):
-            wbuff = WriteBuffer(db, dictionary, 100000)
-
-            if len(clearPassword) == 0:
-                return
-            if clearPassword.strip(" ") == '':
-                return
-
-            # add Password to database temporarily.
-            pass_id = addSocketPassword(db, clearPassword, participantObj.get_participant_id())
-
-            res = mineLine(db, clearPassword, dictionary, freqInfo, checkSpecialChars)
-            if options.verbose:
-                print "[Done]"
-
-            # store results
-            if len(res) > 0:
-                flush = wbuff.addCommit(pass_id, res)
-
-            wbuff._flush()  # flush the rest
-
-        def posTagging(self):
-            try:
-                self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample,
-                                                         save_cachesize=500000)
-                pos_tagger.main(self.passwordSegmentsDb, pos_tagger_data, options.dryrun, options.stats,
-                                options.verbose)
-            except:
-                e = sys.exc_info()[0]
-                traceback.print_exc()
-                sys.exit(1)
-
-        def grammarGeneration(self, transformed_password_id, **kwargs):
-            # grammar.select_treecut(options.password_set, 5000)
-            self.passwordSegmentsDb = database.PwdDb(participantObj.get_participant_id(), sample=options.sample)
-            try:
-                grammar.main(self.passwordSegmentsDb, transformed_password_id, participantObj.get_participant_id(),
-                             options.dryrun,
-                             options.verbose,
-                             "../grammar3", options.tags, type=kwargs.get("type"),
-                             clearPassword=kwargs.get("clearPassword"))
-            except KeyboardInterrupt:
-                db.finish()
-                raise
-
-
-        def clearOriginalData(self):
-            clear_original_data(db)
-
 
     return HTTPRequestHandler

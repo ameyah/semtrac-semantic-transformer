@@ -6,41 +6,51 @@ import post_queries
 __author__ = 'Ameya'
 
 server = SemtracServer()
-cursor = server.get_db_cursor()
 
 
 def get_last_insert_id():
     query = '''SELECT LAST_INSERT_ID() as last_id'''
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     pwid = cursor.fetchone()['last_id']
+    cursor.close()
     return pwid
 
 
 def get_names_dictionary():
     query = "SELECT dict_text FROM dictionary WHERE dictset_id = 20 OR dictset_id = 30;"
+    cursor = server.get_db_cursor()
     cursor.execute(query)
-    return [row['dict_text'] for row in cursor.fetchall()]
+    names_dict = [row['dict_text'] for row in cursor.fetchall()]
+    cursor.close()
+    return names_dict
 
 
 def get_participant_id(one_way_hash):
     # Insert new participant ID
     query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchone()
     if res is not None:
+        cursor.close()
         return res['pwset_id']
     else:
         post_queries.insert_participant_id(one_way_hash)
         query = "SELECT pwset_id FROM password_set WHERE pwset_name='" + one_way_hash + "'"
         cursor.execute(query)
-        return cursor.fetchone()['pwset_id']
+        pwset_id = cursor.fetchone()['pwset_id']
+        cursor.close()
+        return pwset_id
 
 
 def get_study_questions(question_type):
     query = "SELECT question_id, question FROM study_questions WHERE type='{}' ORDER BY question_id".format(
         question_type)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     questions = cursor.fetchall()
+    cursor.close()
     return questions
 
 
@@ -48,8 +58,10 @@ def get_participant_logged_websites(participant_id):
     query = '''SELECT website_id, website_text FROM websites WHERE website_id IN (SELECT DISTINCT
                         website_id FROM user_websites INNER JOIN transformed_credentials WHERE user_websites.user_website_id =
                         transformed_credentials.user_website_id AND pwset_id = {})'''.format(participant_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     websites = cursor.fetchall()
+    cursor.close()
     return websites
 
 
@@ -58,6 +70,7 @@ def check_website_exists(website_url):
     website_id = None
     query = "SELECT website_id FROM websites WHERE website_text = '{}'"
     temp_query = query.format(website_url)
+    cursor = server.get_db_cursor()
     cursor.execute(temp_query)
     res = cursor.fetchall()
     if len(res) > 0:
@@ -75,10 +88,11 @@ def check_website_exists(website_url):
         elif sub_domain_obj.subdomain.lower() == "":
             domain_text = "www.{}.{}".format(sub_domain_obj.domain, sub_domain_obj.suffix)
             temp_query = query.format(domain_text)
-            cursor.execute(query)
+            cursor.execute(temp_query)
             res = cursor.fetchall()
             if len(res) > 0:
                 website_id = res[0]['website_id']
+    cursor.close()
     return website_id
 
 
@@ -86,8 +100,10 @@ def add_website(website_url):
     website_id = None
     post_queries.add_website(website_url)
     query = "SELECT website_id FROM websites WHERE website_text = '{}'".format(website_url)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     website_id = cursor.fetchall()[0]['website_id']
+    cursor.close()
     return website_id
 
 
@@ -104,6 +120,7 @@ def get_transformed_credentials_id(password_set, website_url, password_strength,
 
     query = "SELECT user_website_id FROM user_websites WHERE pwset_id={} AND website_id={}".format(password_set,
                                                                                                    website_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()
     if len(res) > 0:
@@ -123,13 +140,16 @@ def get_transformed_credentials_id(password_set, website_url, password_strength,
             transformed_cred_id DESC LIMIT 1'''.format(user_website_id)
     cursor.execute(query)
     transformed_cred_id = cursor.fetchall()[0]['transformed_cred_id']
+    cursor.close()
     return transformed_cred_id
 
 
 def get_password_key(pwset_id):
     query = "SELECT password_key FROM password_set WHERE pwset_id={}".format(pwset_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()
+    cursor.close()
     if len(res) > 0:
         password_key = res[0]['password_key']
         if password_key is None:
@@ -141,31 +161,39 @@ def get_password_key(pwset_id):
 
 def get_dictionary_type_count(dictset_id):
     query = "SELECT COUNT(*) AS count FROM passwords.dictionary WHERE dictset_id = {} ".format(dictset_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     count = cursor.fetchall()[0]['count']
+    cursor.close()
     return count
 
 
 def get_dictionary_word(dictset_id, seq_no):
     query = "SELECT dict_text FROM passwords.dictionary WHERE dictset_id = {} ".format(dictset_id)
     query += "LIMIT 1 OFFSET {}".format(seq_no - 1)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     dict_text = cursor.fetchall()[0]['dict_text']
+    cursor.close()
     return dict_text
 
 
 def check_wordset_pos(pos):
     query = "SELECT wordset_id FROM passwords.wordlist_set WHERE wordset_name = '{}'".format(pos)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     rowcount = cursor.rowcount > 0
+    cursor.close()
     return rowcount
 
 
 def get_wordlist_type_count(pos):
     query = "SELECT COUNT(*) AS count FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
             "WHERE wordset_name = '{}') ".format(pos)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     count = cursor.fetchall()[0]['count']
+    cursor.close()
     return count
 
 
@@ -173,30 +201,37 @@ def get_wordlist_word(pos, seq_no):
     query = "SELECT wordlist_text FROM passwords.wordlist WHERE wordset_id = (SELECT wordset_id FROM passwords.wordlist_set " \
             "WHERE wordset_name = '{}') ".format(pos)
     query += "LIMIT 1 OFFSET {}".format(seq_no - 1)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     wordlist_text = cursor.fetchall()[0]['wordlist_text']
+    cursor.close()
     return wordlist_text
 
 
 def get_grammar_id(grammar_text):
     query = "SELECT grammar_id FROM grammar WHERE grammar_text = '{}'".format(grammar_text)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()
     if len(res) > 0:
         # Grammar already present. Get grammar_id
+        cursor.close()
         return res[0]['grammar_id']
     else:
         # Insert grammar_text and get its id
         post_queries.insert_grammar(grammar_text)
         cursor.execute(query)
         res = cursor.fetchall()
+        cursor.close()
         return res[0]['grammar_id']
 
 
 def get_transformed_username(transformed_cred_id):
     query = "SELECT username_text FROM transformed_credentials WHERE transformed_cred_id={}".format(transformed_cred_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     transformed_username = cursor.fetchall[0]['username_text']
+    cursor.close()
     return transformed_username
 
 
@@ -209,6 +244,7 @@ def get_transformed_passwords_results(one_way_hash):
             user_websites.user_website_id = transformed_credentials.user_website_id JOIN grammar ON
             transformed_credentials.password_grammar_id = grammar.grammar_id WHERE user_websites.pwset_id = {} ORDER BY
             user_websites.website_id'''.format(participant_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()
     if len(res) > 0:
@@ -220,6 +256,7 @@ def get_transformed_passwords_results(one_way_hash):
             query = "SELECT website_text FROM websites WHERE website_id = {}".format(website_id)
             cursor.execute(query)
             website_text = cursor.fetchall()[0]['website_text']
+            cursor.close()
             passwordArr[0] = website_text
 
         result_dict = {
@@ -238,8 +275,10 @@ def get_website_probability(website_url):
     website_id = check_website_exists(website_url)
     if website_id is not None:
         query = "SELECT probability FROM websites WHERE website_id={}".format(website_id)
+        cursor = server.get_db_cursor()
         cursor.execute(query)
         probability = cursor.fetchall()[0]['probability']
+        cursor.close()
         return probability
     else:
         return None
@@ -248,8 +287,10 @@ def get_website_probability(website_url):
 def get_user_website_id(participant_id, website_id):
     query = "SELECT user_website_id FROM user_websites WHERE pwset_id = {} AND website_id = {}".format(participant_id,
                                                                                                        website_id)
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     user_website_row = cursor.fetchall()
+    cursor.close()
     if len(user_website_row) > 0:
         user_website_id = user_website_row[0]['user_website_id']
         return user_website_id
@@ -259,6 +300,8 @@ def get_user_website_id(participant_id, website_id):
 
 def get_distinct_user_website_ids():
     query = "SELECT DISTINCT user_website_id FROM transformed_credentials"
+    cursor = server.get_db_cursor()
     cursor.execute(query)
     user_website_ids = cursor.fetchall()
+    cursor.close()
     return user_website_ids
