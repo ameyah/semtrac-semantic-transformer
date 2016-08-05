@@ -159,7 +159,9 @@ class Controllers():
     def add_new_user_website(self, postvars):
         website_url = str(postvars['url'][0])
         website_importance = int(postvars['importance'][0])
-        result = post_queries.add_new_website(self.participantObj.get_participant_id(), website_url, website_importance)
+        website_frequency = int(postvars['frequency'][0])
+        result = post_queries.add_new_website(self.participantObj.get_participant_id(), website_url, website_importance,
+            website_frequency)
         return result
 
     def set_active_website(self, postvars):

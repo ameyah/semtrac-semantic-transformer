@@ -144,9 +144,10 @@ def insert_poststudy_answers(participant_id, answers):
     return 1
 
 
-def insert_user_website(participant_id, website_id, user_probability, reset_count, date_time_obj):
-    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability={}, password_reset_count = {}, date = '{}'".format(
-        participant_id, website_id, user_probability, reset_count, date_time_obj)
+def insert_user_website(participant_id, website_id, user_probability, user_frequency, reset_count, date_time_obj):
+    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability={}, website_frequency={}, " \
+            "password_reset_count = {}, date = '{}'".format(participant_id, website_id, user_probability, user_frequency,
+                                                            reset_count, date_time_obj)
     execute_commit_query(query)
 
 
@@ -177,21 +178,25 @@ def insert_website_list(participant_id, website_list):
                     date_time_obj = parser.parse(website['date'].split("(")[0], ignoretz=True)
 
             website_user_probability = 1 if website['important'] else 0
+            website_frequency = 1 if website['frequency'] else 0
 
             # First check if entry exists in transformed_passwords table, update it else insert new entry
             user_website_id = get_queries.get_user_website_id(participant_id, website_id)
             if user_website_id is not None:
                 if null_date_flag:
-                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {} WHERE user_website_id = {}".format(
-                        website_user_probability, website['reset_count'], user_website_id)
+                    query = "UPDATE user_websites SET website_probability = {}, website_frequency = {}, password_reset_count = {} " \
+                            "WHERE user_website_id = {}".format(website_user_probability, website_frequency,
+                                                                website['reset_count'], user_website_id)
                     execute_commit_query(query)
                 else:
-                    query = "UPDATE user_websites SET website_probability = {}, password_reset_count = {}, date = '{}' WHERE user_website_id = {}".format(
-                        website_user_probability, website['reset_count'], date_time_obj, user_website_id)
+                    query = "UPDATE user_websites SET website_probability = {}, website_frequency = {}, password_reset_count = {}, " \
+                            "date = '{}' WHERE user_website_id = {}".format(website_user_probability, website_frequency,
+                                                                            website['reset_count'], date_time_obj,
+                                                                            user_website_id)
                     execute_commit_query(query)
             else:
-                insert_user_website(participant_id, website_id, website_user_probability, website['reset_count'],
-                                    date_time_obj)
+                insert_user_website(participant_id, website_id, website_user_probability, website_frequency,
+                                    website['reset_count'], date_time_obj)
         except Exception as e:
             print e
             print "exception"
@@ -228,7 +233,7 @@ def insert_website_list(participant_id, website_list):
     execute_commit_query(query)
 
 
-def add_new_website(participant_id, website_url, website_importance):
+def add_new_website(participant_id, website_url, website_importance, website_frequency):
     website_id = get_queries.check_website_exists(website_url)
     if website_id is None:
         # add the website and fetch website_id
@@ -236,11 +241,11 @@ def add_new_website(participant_id, website_url, website_importance):
         website_id = get_queries.check_website_exists(website_url)
     user_website_id = get_queries.get_user_website_id(participant_id, website_id)
     if user_website_id is not None:
-        query = "UPDATE user_websites SET website_probability = {} WHERE user_website_id = {}".format(
-            int(website_importance), int(user_website_id))
+        query = "UPDATE user_websites SET website_probability = {}, website_frequency = {} WHERE user_website_id = {}".format(
+            int(website_importance), int(website_frequency), int(user_website_id))
         execute_commit_query(query)
         return 1
-    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability = {}".format(
-        participant_id, website_id, website_importance)
+    query = "INSERT INTO user_websites SET pwset_id = {}, website_id = {}, website_probability = {}, website_frequency = {}".format(
+        participant_id, website_id, website_importance, website_frequency)
     execute_commit_query(query)
     return 1
