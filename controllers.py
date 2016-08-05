@@ -67,10 +67,11 @@ class Controllers():
                                                                          website_info_dict['password_strength'],
                                                                          website_info_dict['password_warning'])
         self.participantObj.set_transformed_cred_id(transformed_cred_id)
+        print transformed_cred_id
 
         segmentation.segment_word(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
         pos_tag.pos_tag_word(self.participantObj.get_participant_id())
-        generate_grammar.generate_grammar(transformed_cred_id, transformed_cred_id,
+        generate_grammar.generate_grammar(self.participantObj.get_participant_id(), transformed_cred_id,
                                           clear_password=clear_password_uri_decoded)
 
         # Delete original password after transformation

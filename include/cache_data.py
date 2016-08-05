@@ -234,13 +234,16 @@ class TempWordBuffer():
             self.readpointer += 1
             return self.readbuffer[self.readpointer]
         except:
+            return None
             # print "Refilling buffer..."
+            """
             self.fill_buffer()
             if len(self.readbuffer) < 1:
                 return None
             else:
                 self.readpointer += 1
                 return self.readbuffer[self.readpointer]
+            """
 
     def next_password(self):
         if self.row is None:

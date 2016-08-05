@@ -156,6 +156,7 @@ def get_password_key(pwset_id):
             # generate password key and insert into database
             password_key = random.randint(1, (2 ** 32 - 1))
             post_queries.insert_password_key(pwset_id, password_key)
+            password_key = get_password_key(pwset_id)
     return password_key
 
 
@@ -230,7 +231,7 @@ def get_transformed_username(transformed_cred_id):
     query = "SELECT username_text FROM transformed_credentials WHERE transformed_cred_id={}".format(transformed_cred_id)
     cursor = server.get_db_cursor()
     cursor.execute(query)
-    transformed_username = cursor.fetchall[0]['username_text']
+    transformed_username = cursor.fetchall()[0]['username_text']
     cursor.close()
     return transformed_username
 
@@ -252,6 +253,7 @@ def get_transformed_passwords_results(one_way_hash):
         # convert list of tuples to list of lists
         transformed_passwords = [list(elem) for elem in transformed_passwords]
         for passwordArr in transformed_passwords:
+            print passwordArr[0]
             website_id = int(passwordArr[0])
             query = "SELECT website_text FROM websites WHERE website_id = {}".format(website_id)
             cursor.execute(query)

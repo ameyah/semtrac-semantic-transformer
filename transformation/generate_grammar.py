@@ -22,7 +22,6 @@ def generate_grammar(participant_id, transformed_cred_id, **kwargs):
 
     while word_buffer_obj.has_next():
         segments = word_buffer_obj.next_password()
-        password = ''.join([s.word for s in segments])
         tags = []
         transformed_password = ""
 

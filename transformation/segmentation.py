@@ -25,9 +25,12 @@ def segment_word(clear_text, check_mangling, participant_id):
 
     # add Password to database temporarily.
     post_queries.insert_clear_password(participant_id, clear_text)
+    print "inserted cler password"
     pass_id = get_queries.get_last_insert_id()
+    print "pass_id" + str(pass_id)
 
     res = mine_word(clear_text, check_mangling)
+    print res
 
     # store results
     if len(res) > 0:

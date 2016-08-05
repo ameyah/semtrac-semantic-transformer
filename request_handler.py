@@ -111,6 +111,7 @@ def HTTPRequestHandlerContainer():
                         'password_warning': password_warning,
                         'active_url': active_url
                     }
+                    self.send_ok_response()
                     controller.transform_credentials(website_info_dict)
                 elif "/participant/results" in self.path:
                     one_way_hash = utils.get_get_param(self.path, 'hash')
@@ -137,6 +138,7 @@ def HTTPRequestHandlerContainer():
                 print e
                 print "exception"
                 clear_password = ''
+                controller.clear_plain_text_data()
 
             return
 

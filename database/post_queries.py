@@ -7,11 +7,12 @@ __author__ = 'Ameya'
 
 server = SemtracServer()
 db = server.get_db_conn()
-cursor = server.get_db_cursor()
 
 
 def execute_commit_query(query):
+    cursor = server.get_db_cursor()
     cursor.execute(query)
+    cursor.close()
     db.commit()
 
 

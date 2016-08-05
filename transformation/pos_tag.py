@@ -10,7 +10,6 @@ cache = Cache()
 def pos_tag_word(participant_id):
     try:
         word_buffer_obj = TempWordBuffer(participant_id, save_cachesize=500000)
-        counter = 0
 
         with Timer("POS tagging"):
             total = word_buffer_obj.sets_size
@@ -19,8 +18,6 @@ def pos_tag_word(participant_id):
             while word_buffer_obj.has_next():
                 pwd = word_buffer_obj.next_password()  # list of Fragment
                 pwd_str = pwd[0].password
-
-                counter += 1
 
                 # filters segments that are not dictionary words
                 pwd = [f for f in pwd if f.dictset_id <= 90]
@@ -33,12 +30,11 @@ def pos_tag_word(participant_id):
                 for i, f in enumerate(pwd):
                     pos = pos_tagged[i][1]  # Brown pos tag
                     f.pos = pos
+                    word_buffer_obj.save(f, True)
 
                 lastpw = pwd_str
 
-                if counter % 100000 == 0:
-                    print "{} passwords processed. {}% completed..." \
-                        .format(counter, (float(counter) / total) * 100)
+            word_buffer_obj.finish()
 
     except:
         traceback.print_exc()
