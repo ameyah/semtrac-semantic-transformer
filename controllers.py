@@ -67,7 +67,6 @@ class Controllers():
                                                                          website_info_dict['password_strength'],
                                                                          website_info_dict['password_warning'])
         self.participantObj.set_transformed_cred_id(transformed_cred_id)
-        print transformed_cred_id
 
         segmentation.segment_word(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
         pos_tag.pos_tag_word(self.participantObj.get_participant_id())

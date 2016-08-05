@@ -51,7 +51,7 @@ toEscape = ['\\', '\'', ' ']
 def loadNgrams(dbe):
     # unigrams
     with dbe.cursor() as cursor:
-        query = 'SELECT word, MAX(freq) FROM passwords.COCA_wordlist group by word'
+        query = 'SELECT word, MAX(freq) FROM passwords.coca_wordlist group by word'
         cursor.execute(query, )
         for word, freq in cursor:
             ngrams[word] = freq
@@ -91,7 +91,7 @@ def freqReadCache(dbe):
     # we actually need to sum these up to be accurate, instead of just their
     # raw count.
     with dbe.cursor() as cursor:
-        query = '''SELECT sum(freq) FROM COCA_wordlist;'''
+        query = '''SELECT sum(freq) FROM coca_wordlist;'''
         cursor.execute(query, )
         num_unigrams = cursor.fetchall()[0][0]
         query = '''SELECT sum(freq) FROM bigrams;'''

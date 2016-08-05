@@ -50,7 +50,7 @@ class SemtracServer():
             from request_handler import HTTPRequestHandlerContainer
             HTTPHandlerClass = HTTPRequestHandlerContainer()
             httpd = HTTPServer(server_address, HTTPHandlerClass)
-            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='C:\server.crt', server_side=True, keyfile='C:\server.key')
+            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='cert/server.crt', server_side=True, keyfile='cert/server.key')
             print('https server is running...')
             httpd.serve_forever()
 

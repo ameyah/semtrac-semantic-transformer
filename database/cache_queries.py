@@ -7,7 +7,7 @@ db = server.get_db_conn()
 
 
 def get_unigram_freq():
-    query = '''SELECT sum(freq) AS sum_freq FROM COCA_wordlist;'''
+    query = '''SELECT sum(freq) AS sum_freq FROM coca_wordlist;'''
     cursor = server.get_db_cursor()
     cursor.execute(query)
     num_unigrams = cursor.fetchall()[0]['sum_freq']
@@ -34,7 +34,7 @@ def get_trigram_freq():
 
 
 def get_unigrams():
-    query = "SELECT word, MAX(freq) AS max_freq FROM passwords.COCA_wordlist GROUP BY word"
+    query = "SELECT word, MAX(freq) AS max_freq FROM passwords.coca_wordlist GROUP BY word"
     cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()

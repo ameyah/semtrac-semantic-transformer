@@ -135,8 +135,8 @@ def insert_poststudy_answers(participant_id, answers):
             query = "DELETE FROM study_responses WHERE pwset_id = {} AND question_id = {} AND website_id = {}".format(
                 participant_id, answer['question_id'], answer['website_id'])
             execute_commit_query(query)
-            query = "INSERT INTO study_responses SET pwset_id = {}, question_id = {}, website_id = {}, response_obj = '{}'".format(
-                participant_id, answer['question_id'], utils.escape(answer['answer']))
+            query = "INSERT INTO study_responses SET pwset_id = {}, question_id = {}, website_id = {}, response_obj = {}".format(
+                participant_id, answer['question_id'], answer['website_id'], answer['answer'])
             execute_commit_query(query)
         else:
             return None
