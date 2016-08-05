@@ -71,5 +71,5 @@ class SemtracServer():
 
 if __name__ == '__main__':
     server = SemtracServer()
-    # server.pre_tasks()
+    server.pre_tasks()
     server.start_server()

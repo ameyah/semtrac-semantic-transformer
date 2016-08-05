@@ -250,17 +250,15 @@ def get_transformed_passwords_results(one_way_hash):
     res = cursor.fetchall()
     if len(res) > 0:
         transformed_passwords = res
-        # convert list of tuples to list of lists
-        transformed_passwords = [list(elem) for elem in transformed_passwords]
         for passwordArr in transformed_passwords:
-            print passwordArr[0]
-            website_id = int(passwordArr[0])
+            website_id = int(passwordArr['website_id'])
             query = "SELECT website_text FROM websites WHERE website_id = {}".format(website_id)
             cursor.execute(query)
             website_text = cursor.fetchall()[0]['website_text']
-            cursor.close()
-            passwordArr[0] = website_text
+            passwordArr['website_text'] = website_text
+            del passwordArr['website_id']
 
+        cursor.close()
         result_dict = {
             'participant_id': participant_id,
             'transformed_passwords': transformed_passwords
@@ -270,6 +268,7 @@ def get_transformed_passwords_results(one_way_hash):
         result_dict = {
             'participant_id': participant_id
         }
+        cursor.close()
         return result_dict
 
 

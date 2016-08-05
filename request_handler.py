@@ -116,6 +116,7 @@ def HTTPRequestHandlerContainer():
                 elif "/participant/results" in self.path:
                     one_way_hash = utils.get_get_param(self.path, 'hash')
                     result_dict = controller.get_participant_results(one_way_hash)
+                    print result_dict
                     self.send_ok_response(data=json.dumps(result_dict))
                 elif "/website/importance" in self.path:
                     website_url = utils.get_get_param(self.path, 'url')
