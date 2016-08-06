@@ -12,10 +12,12 @@ def dbcredentials(root_path):
     f = open(abspath(root_path, 'db_credentials.conf'))
 
     credentials = dict()
-
     for line in f:
-        key, value = line.split(':')
-        credentials[key.strip()] = value.strip()
+        key, value = map(lambda x: x.strip(),line.split(':'))
+        if "MYSQL_" + key in os.environ.keys():
+          credentials[key] = os.environ["MYSQL_" + key]
+        else:
+          credentials[key] = value
 
     return credentials
 

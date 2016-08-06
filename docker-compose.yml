@@ -1,0 +1,32 @@
+version: '2'
+services:
+  db:
+    image: mysql
+    volumes:
+      # sql.gz file to populate the db lives here
+      - "./docker:/docker-entrypoint-initdb.d"
+      # once populated, the current db lives here (dir must exist)
+      - "./currentdb:/var/lib/mysql"
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: passwords
+      MYSQL_USER: passwords
+      MYSQL_PASSWORD: passwords
+  semtrac:
+    build: ./docker
+    links:
+      - db
+    ports:
+      - "443:443"
+    volumes:
+      - ".:/app"
+    depends_on:
+      - db
+    tty: true
+    environment:
+      MYSQL_host: db
+      MYSQL_user: passwords
+      MYSQL_password: passwords
+      MYSQL_db: passwords
+
+

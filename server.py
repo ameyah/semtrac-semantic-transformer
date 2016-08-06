@@ -46,7 +46,7 @@ class SemtracServer():
                 self.cache.load_pos_tagger(pickle_path, coca_tagger_path)
 
         def start_server(self):
-            server_address = ('127.0.0.1', 443)
+            server_address = ('0.0.0.0', 443)
             from request_handler import HTTPRequestHandlerContainer
             HTTPHandlerClass = HTTPRequestHandlerContainer()
             httpd = HTTPServer(server_address, HTTPHandlerClass)
