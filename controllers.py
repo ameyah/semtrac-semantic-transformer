@@ -58,6 +58,7 @@ class Controllers():
             previous_active_website = self.participantObj.get_previous_active_website()
             if utils.check_website_syntactic_similarity(website_url, previous_active_website):
                 website_url = previous_active_website
+
         clear_password_uri_decoded = utils.url_decode(website_info_dict['clear_password'])
         clear_username_uri_decoded = utils.url_decode(website_info_dict['clear_username'])
 
@@ -67,6 +68,11 @@ class Controllers():
                                                                          website_info_dict['password_strength'],
                                                                          website_info_dict['password_warning'])
         self.participantObj.set_transformed_cred_id(transformed_cred_id)
+
+        # store length and uppercase info for clear text password
+        password_length = len(website_info_dict['clear_password'])
+        password_all_uppercase = utils.escape(website_info_dict['clear_password']).isupper()
+        post_queries.store_password_length_uppercase_info(transformed_cred_id, password_length, password_all_uppercase)
 
         segmentation.segment_word(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
         pos_tag.pos_tag_word(self.participantObj.get_participant_id())

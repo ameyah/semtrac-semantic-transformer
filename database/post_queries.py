@@ -249,3 +249,10 @@ def add_new_website(participant_id, website_url, website_importance, website_fre
         participant_id, website_id, website_importance, website_frequency)
     execute_commit_query(query)
     return 1
+
+
+def store_password_length_uppercase_info(transformed_cred_id, password_length, is_uppercase):
+    is_uppercase = 1 if is_uppercase else 0
+    query = "UPDATE transformed_credentials SET password_length = {}, all_uppercase = {} WHERE transformed_cred_id = {}".\
+        format(password_length, is_uppercase, transformed_cred_id)
+    execute_commit_query(query)
