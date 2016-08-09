@@ -1,4 +1,5 @@
 import random
+import re
 from tldextract import tldextract
 from server import SemtracServer
 import post_queries
@@ -239,26 +240,45 @@ def get_transformed_username(transformed_cred_id):
 def get_transformed_passwords_results(one_way_hash):
     participant_id = get_participant_id(one_way_hash)
 
-    query = '''SELECT user_websites.website_id, user_websites.website_probability, user_websites.password_reset_count,
+    query = '''SELECT (SELECT website_text FROM websites WHERE website_id = user_websites.website_id) as website_text,
+            user_websites.website_probability, user_websites.password_reset_count, transformed_credentials.transformed_cred_id,
             transformed_credentials.username_text, transformed_credentials.password_text, grammar.grammar_text,
             transformed_credentials.auth_status FROM user_websites INNER JOIN transformed_credentials ON
-            user_websites.user_website_id = transformed_credentials.user_website_id JOIN grammar ON
-            transformed_credentials.password_grammar_id = grammar.grammar_id WHERE user_websites.pwset_id = {} ORDER BY
-            user_websites.website_id'''.format(participant_id)
+            user_websites.user_website_id = transformed_credentials.user_website_id JOIN grammar
+            ON transformed_credentials.password_grammar_id = grammar.grammar_id WHERE user_websites.pwset_id = {}
+            ORDER BY user_websites.website_id'''.format(participant_id)
     cursor = server.get_db_cursor()
     cursor.execute(query)
     res = cursor.fetchall()
     if len(res) > 0:
         transformed_passwords = res
-        for passwordArr in transformed_passwords:
-            website_id = int(passwordArr['website_id'])
-            query = "SELECT website_text FROM websites WHERE website_id = {}".format(website_id)
-            cursor.execute(query)
-            website_text = cursor.fetchall()[0]['website_text']
-            passwordArr['website_text'] = website_text
-            del passwordArr['website_id']
-
         cursor.close()
+        for passwordArr in transformed_passwords:
+            # build password segments array.
+            # First extract segments from password grammar
+            passwordArr['password_segments'] = []
+            grammar_segments = re.findall("\([a-z]+[0-9]*\)", passwordArr['grammar_text'])
+            for i in range(0, len(grammar_segments)):
+                grammar_segments[i] = re.sub("[^\w+]", "", grammar_segments[i])
+
+            # Get segment information from transformed_cred_id
+            get_segments_query = '''SELECT segment, capital, special FROM transformed_segments WHERE transformed_cred_id = {}'''.format(
+                passwordArr['transformed_cred_id'])
+            cursor = server.get_db_cursor()
+            cursor.execute(get_segments_query)
+            segment_info = cursor.fetchall()
+            cursor.close()
+            segment_grammar_count = 0
+            for segment in segment_info:
+                segment_obj = {
+                    'segment': segment['segment'],
+                    'grammar': grammar_segments[segment_grammar_count],
+                    'capital': segment['capital'],
+                    'special': segment['special']
+                }
+                passwordArr['password_segments'].append(segment_obj)
+                segment_grammar_count += 1
+
         result_dict = {
             'participant_id': participant_id,
             'transformed_passwords': transformed_passwords
