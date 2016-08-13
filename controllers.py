@@ -60,7 +60,12 @@ class Controllers():
                 website_url = previous_active_website
 
         clear_password_uri_decoded = utils.url_decode(website_info_dict['clear_password'])
-        clear_username_uri_decoded = utils.url_decode(website_info_dict['clear_username'])
+        try:
+            clear_username_uri_decoded = utils.url_decode(website_info_dict['clear_username'])
+        except AttributeError:
+            clear_username_uri_decoded = self.participantObj.get_previous_username()
+        except KeyError:
+            clear_username_uri_decoded = self.participantObj.get_previous_username()
 
         # First insert the login website in the database
         transformed_cred_id = get_queries.get_transformed_credentials_id(self.participantObj.get_participant_id(),
