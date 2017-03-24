@@ -16,7 +16,7 @@ CHAR_DICT_ID = 203
 MIXED_ALL_DICT_ID = 204
 
 
-def segment_word(clear_text, check_mangling, participant_id):
+def segment_word(participant_id, clear_text, check_mangling):
     wbuff = TempClearTextWriteBuffer(100000)
     if len(clear_text) == 0:
         return

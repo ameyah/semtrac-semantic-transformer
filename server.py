@@ -46,12 +46,12 @@ class SemtracServer():
                 self.cache.load_pos_tagger(pickle_path, coca_tagger_path)
 
         def start_server(self):
-            server_address = ('127.0.0.1', 443)
+            server_address = ('127.0.0.1', 8080)
             from request_handler import HTTPRequestHandlerContainer
             HTTPHandlerClass = HTTPRequestHandlerContainer()
             httpd = HTTPServer(server_address, HTTPHandlerClass)
-            httpd.socket = ssl.wrap_socket(httpd.socket, certfile='cert/server.crt', server_side=True, keyfile='cert/server.key')
-            print('https server is running...')
+            # httpd.socket = ssl.wrap_socket(httpd.socket, certfile='cert/server.crt', server_side=True, keyfile='cert/server.key')
+            print('http server is running...')
             httpd.serve_forever()
 
     __instance = None

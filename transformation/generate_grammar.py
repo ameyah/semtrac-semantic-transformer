@@ -8,52 +8,28 @@ import database.post_queries as post_queries
 from transformation import words_mapping
 import include.util as utils
 from include.cache_data import Fragment
+from collections import OrderedDict
 
 __author__ = 'Ameya'
 
 
 def generate_grammar(participant_id, transformed_cred_id, **kwargs):
     word_buffer_obj = TempWordBuffer(participant_id)
-    patterns_dist = FreqDist()  # distribution of patterns
-    segments_dist = ConditionalFreqDist()  # distribution of segments, grouped by semantic tag
 
-    # check for password_key, insert if necessary
-    password_key = get_queries.get_password_key(participant_id)
+    segment_pos = OrderedDict()
 
     while word_buffer_obj.has_next():
         segments = word_buffer_obj.next_password()
-        tags = []
-        transformed_password = ""
 
         segments = expand_gaps(segments)
 
         for s in segments:  # semantic tags
+            if str(s) not in segment_pos:
+                segment_pos[str(s)] = []
+            segment_pos[str(s)].append(s.pos)
             tag = classify_pos_semantic(s)
-            tags.append(tag)
-            transformed_segment = str(generate_transformed_segment(s, tag, password_key))
-            transformed_password += transformed_segment
-
-            # Save transformed segment with corresponding capitalization information
-            if kwargs.get("clear_password") is not None:
-                save_transformed_segment_info(transformed_cred_id, transformed_segment, tag, s.s_index, s.e_index,
-                                              kwargs.get("clear_password"))
-
-            segments_dist[tag][s.word] += 1
-
-        pattern = utils.stringify_pattern(tags)
-        patterns_dist[pattern] += 1
-
-        if kwargs.get("type") == "username":
-            # save username at transformed_cred_id and return
-            # variable transformed_password is actually transformed username
-            transformed_username = transformed_password
-            post_queries.save_transformed_username(transformed_cred_id, transformed_username)
-            return
-
-        # Save transformed password in the database if transformed_cred_id is not None
-        if transformed_cred_id is not None:
-            post_queries.save_transformed_password(transformed_cred_id, transformed_password, str(pattern))
-
+            segment_pos[str(s)].append(tag)
+    return segment_pos
 
 class DictionaryTag:
     map = {10: 'month',

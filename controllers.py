@@ -48,70 +48,16 @@ class Controllers():
                     return result_obj
                 return questions
 
-    def transform_credentials(self, website_info_dict):
-        # For websiteUrl, first check whether participantObj has an active url
-        active_website = self.participantObj.get_active_website()
-        if active_website != '':
-            website_url = active_website
-        else:
-            website_url = website_info_dict['active_url']
-            previous_active_website = self.participantObj.get_previous_active_website()
-            if utils.check_website_syntactic_similarity(website_url, previous_active_website):
-                website_url = previous_active_website
-
-        clear_password_uri_decoded = utils.url_decode(website_info_dict['clear_password'])
-        try:
-            clear_username_uri_decoded = utils.url_decode(website_info_dict['clear_username'])
-        except AttributeError:
-            clear_username_uri_decoded = self.participantObj.get_previous_username()
-        except KeyError:
-            clear_username_uri_decoded = self.participantObj.get_previous_username()
-
-        # First insert the login website in the database
-        transformed_cred_id = get_queries.get_transformed_credentials_id(self.participantObj.get_participant_id(),
-                                                                         website_url,
-                                                                         website_info_dict['password_strength'],
-                                                                         website_info_dict['password_warning'])
-        self.participantObj.set_transformed_cred_id(transformed_cred_id)
-
-        # store length and uppercase info for clear text password
-        password_length = len(website_info_dict['clear_password'])
-        password_all_uppercase = utils.escape(website_info_dict['clear_password']).isupper()
-        post_queries.store_password_length_uppercase_info(transformed_cred_id, password_length, password_all_uppercase)
-
-        segmentation.segment_word(clear_password_uri_decoded, True, self.participantObj.get_participant_id())
-        pos_tag.pos_tag_word(self.participantObj.get_participant_id())
-        generate_grammar.generate_grammar(self.participantObj.get_participant_id(), transformed_cred_id,
-                                          clear_password=clear_password_uri_decoded)
+    def transform_credentials(self, clear_password):
+        clear_password_uri_decoded = utils.url_decode(clear_password)
+        participant_id = 0
+        segmentation.segment_word(participant_id, clear_password_uri_decoded, True)
+        pos_tag.pos_tag_word(participant_id)
+        segment_pos = generate_grammar.generate_grammar(participant_id, 0, clear_password=clear_password_uri_decoded)
 
         # Delete original password after transformation
         self.clear_plain_text_data()
-
-        # Transform usernames semantically. We'll use the same functions for now.
-        # as the procedure is same, except that we dont have to store grammar.
-        # First check if username is email, if it is then extract email username and transform only the
-        # username
-        email_split_flag = False
-        if re.match("[^@]+@[^@]+\.[^@]+", clear_username_uri_decoded):
-            email_username = clear_username_uri_decoded.split("@")[0]
-            email_split_flag = True
-        else:
-            email_username = clear_username_uri_decoded
-        segmentation.segment_word(email_username, False, self.participantObj.get_participant_id())
-        pos_tag.pos_tag_word(self.participantObj.get_participant_id())
-        generate_grammar.generate_grammar(self.participantObj.get_participant_id(), transformed_cred_id,
-                                          type="username")
-
-        if email_split_flag:
-            # Now append the email domain to the transformed Username
-            email_domain = "@" + clear_username_uri_decoded.split("@")[1]
-            post_queries.append_email_domain_username(transformed_cred_id, email_domain)
-
-        # store clearUsername in participantObj
-        self.participantObj.set_active_username(clear_username_uri_decoded)
-        self.clear_plain_text_data()
-
-        self.participantObj.reset_active_website()
+        return segment_pos
 
     def get_participant_results(self, one_way_hash):
         # First clear the password hashes
